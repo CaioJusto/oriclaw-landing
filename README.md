@@ -1,36 +1,134 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# OriClaw Landing Page
 
-## Getting Started
+Landing page para o OriClaw — plataforma SaaS para hospedar instâncias OpenClaw.
 
-First, run the development server:
+🌐 **Domínio:** oriclaw.com.br  
+⚡ **Tagline:** Deploy seu assistente OpenClaw em 1 clique
+
+## Stack
+
+- **Next.js 14** (App Router) + TypeScript
+- **Tailwind CSS** (dark theme — slate-950 + violet-600)
+- **Supabase** (autenticação)
+- **Stripe** (checkout)
+- **Lucide React** (ícones)
+
+## Páginas
+
+| Rota | Descrição |
+|------|-----------|
+| `/` | Landing page com hero, comparação, features e pricing |
+| `/login` | Página de login (Supabase Auth) |
+| `/dashboard` | Painel do usuário (rota protegida) |
+| `/checkout?plan=X` | Checkout via Stripe (starter/pro/business) |
+
+## Setup
+
+### 1. Clone e instale dependências
+
+```bash
+git clone https://github.com/CaioJusto/oriclaw-landing
+cd oriclaw-landing
+npm install
+```
+
+### 2. Configure variáveis de ambiente
+
+Copie o `.env.local` e preencha os valores reais:
+
+```bash
+cp .env.local .env.local.example
+```
+
+Edite `.env.local`:
+
+```env
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://pskvfegwnqdfbstqkpob.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sua_chave_aqui
+
+# Stripe
+STRIPE_PUBLISHABLE_KEY=pk_live_...
+STRIPE_SECRET_KEY=sk_live_...
+
+# App
+NEXT_PUBLIC_APP_URL=https://oriclaw.com.br
+```
+
+### 3. Configure Supabase
+
+1. Acesse [supabase.com](https://supabase.com) e crie um projeto
+2. Ative o **Email Auth** em Authentication > Providers
+3. Configure o redirect URL para `https://oriclaw.com.br/dashboard`
+
+### 4. Configure Stripe
+
+1. Acesse [stripe.com](https://stripe.com) e crie produtos para cada plano
+2. Crie uma API route `/api/checkout` para gerar sessions do Stripe
+3. Configure webhooks para `/api/webhooks/stripe`
+
+### 5. Rode em desenvolvimento
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Acesse: http://localhost:3000
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 6. Build de produção
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+npm start
+```
 
-## Learn More
+## Deploy
 
-To learn more about Next.js, take a look at the following resources:
+### Vercel (recomendado)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npx vercel --prod
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Configure as variáveis de ambiente no painel da Vercel.
 
-## Deploy on Vercel
+### Docker
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```dockerfile
+FROM node:20-alpine
+WORKDIR /app
+COPY . .
+RUN npm ci && npm run build
+CMD ["npm", "start"]
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Estrutura do projeto
+
+```
+oriclaw-landing/
+├── app/
+│   ├── page.tsx          # Landing page
+│   ├── login/page.tsx    # Login
+│   ├── dashboard/page.tsx # Dashboard
+│   ├── checkout/page.tsx  # Checkout
+│   ├── layout.tsx
+│   └── globals.css
+├── components/
+│   └── Navbar.tsx
+├── lib/
+│   └── supabase.ts
+├── .env.local
+└── README.md
+```
+
+## Planos
+
+| Plano | Preço | vCPU | RAM | SSD |
+|-------|-------|------|-----|-----|
+| Starter | R$97/mês | 1 | 2GB | 50GB |
+| Pro | R$147/mês | 2 | 4GB | 100GB |
+| Business | R$247/mês | 4 | 8GB | 200GB |
+
+## Suporte
+
+📧 suporte@oriclaw.com.br
