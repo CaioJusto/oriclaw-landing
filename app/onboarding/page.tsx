@@ -23,7 +23,7 @@ import {
 // ── Types ────────────────────────────────────────────────────────────────────
 type Channel = "whatsapp" | "telegram" | "discord";
 type AIMode = "byok" | "credits" | "chatgpt";
-type BYOKProvider = "anthropic" | "openai" | "google" | "openrouter";
+type BYOKProvider = "anthropic" | "openai" | "google" | "gemini" | "openrouter";
 
 interface Instance {
   id: string;
@@ -478,7 +478,7 @@ export default function OnboardingPage() {
         body.model = prov.model;
         if (byokProvider === "anthropic") body.anthropic_key = apiKey;
         else if (byokProvider === "openai") body.openai_key = apiKey;
-        else if (byokProvider === "google") body.openai_key = apiKey;
+        else if (byokProvider === "google" || byokProvider === "gemini") body.google_key = apiKey;
         else if (byokProvider === "openrouter") body.openrouter_key = apiKey;
       } else if (aiMode === "credits") {
         body.credits_mode = true;

@@ -1114,11 +1114,16 @@ export default function MainDashboard({ instance, userEmail, token, onLogout }: 
   const [showConfig, setShowConfig] = useState(false);
   const [showPersona, setShowPersona] = useState(false);
   const [showPurchase, setShowPurchase] = useState(false);
+  const [pollingPaused, setPollingPaused] = useState(false);
 
   const [restarting, setRestarting] = useState(false);
   const [restartConfirm, setRestartConfirm] = useState(false);
   const [restartStatus, setRestartStatus] = useState<"idle" | "restarting" | "success" | "failed">("idle");
   const [showInstanceInfo, setShowInstanceInfo] = useState(false);
+  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const failureCountRef = useRef(0);
+  const pollIntervalMsRef = useRef(30_000);
+  const pollingStoppedRef = useRef(false);
 
   const aiMode = (instance.metadata?.ai_mode as string | undefined) ?? "byok";
   const isCreditsMode = aiMode === "credits";
@@ -1127,11 +1132,19 @@ export default function MainDashboard({ instance, userEmail, token, onLogout }: 
   );
 
   // ── Fetchers ───────────────────────────────────────────────────────────────
-  const fetchHealth = useCallback(async () => {
+  const fetchHealth = useCallback(async (): Promise<boolean> => {
     try {
       const data = await proxyCall("GET", instance.id, "health", token);
+      if (data?.error) {
+        setHealth(null);
+        return false;
+      }
       setHealth(data);
-    } catch { setHealth(null); }
+      return true;
+    } catch {
+      setHealth(null);
+      return false;
+    }
     finally { setHealthLoading(false); }
   }, [instance.id, token]);
 
@@ -1165,19 +1178,60 @@ export default function MainDashboard({ instance, userEmail, token, onLogout }: 
     } catch { /* ignore */ }
   }, [isCreditsMode, token]);
 
-  useEffect(() => {
-    fetchHealth();
-    fetchDetailedHealth();
-    fetchChatUrl();
-    fetchChannels();
-    fetchCredits();
-    const interval = setInterval(() => {
-      fetchHealth();
+  const clearPollingTimer = useCallback(() => {
+    if (pollTimeoutRef.current) {
+      clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
+    }
+  }, []);
+
+  const runHealthPollingCycle = useCallback(async () => {
+    if (pollingStoppedRef.current) return;
+
+    const healthOk = await fetchHealth();
+    if (healthOk) {
+      failureCountRef.current = 0;
+      pollIntervalMsRef.current = 30_000;
+      setPollingPaused(false);
       fetchDetailedHealth();
       fetchChannels();
-    }, 30_000);
-    return () => clearInterval(interval);
-  }, [fetchHealth, fetchDetailedHealth, fetchChatUrl, fetchChannels, fetchCredits]);
+    } else {
+      failureCountRef.current += 1;
+
+      if (failureCountRef.current >= 5) {
+        pollingStoppedRef.current = true;
+        setPollingPaused(true);
+        clearPollingTimer();
+        return;
+      }
+
+      if (failureCountRef.current >= 3) {
+        pollIntervalMsRef.current = 60_000;
+      }
+    }
+
+    pollTimeoutRef.current = setTimeout(runHealthPollingCycle, pollIntervalMsRef.current);
+  }, [clearPollingTimer, fetchChannels, fetchDetailedHealth, fetchHealth]);
+
+  const restartHealthPolling = useCallback(() => {
+    pollingStoppedRef.current = false;
+    failureCountRef.current = 0;
+    pollIntervalMsRef.current = 30_000;
+    setPollingPaused(false);
+    clearPollingTimer();
+    runHealthPollingCycle();
+  }, [clearPollingTimer, runHealthPollingCycle]);
+
+  useEffect(() => {
+    fetchChatUrl();
+    fetchCredits();
+    restartHealthPolling();
+
+    return () => {
+      pollingStoppedRef.current = true;
+      clearPollingTimer();
+    };
+  }, [fetchChatUrl, fetchCredits, restartHealthPolling, clearPollingTimer]);
 
   // ── Disconnect channel ─────────────────────────────────────────────────────
   const disconnectChannel = async (ch: string) => {
@@ -1295,6 +1349,20 @@ export default function MainDashboard({ instance, userEmail, token, onLogout }: 
             </button>
           </div>
         </div>
+
+        {pollingPaused && (
+          <div className="flex items-center justify-between gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300">
+            <span className="text-sm font-medium">
+              Não foi possível conectar ao servidor. Clique para tentar novamente.
+            </span>
+            <button
+              onClick={restartHealthPolling}
+              className="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-amber-200 text-sm font-medium transition-colors"
+            >
+              Tentar novamente
+            </button>
+          </div>
+        )}
 
         {/* ── Restart toast ── */}
         {restartStatus === "success" && (
