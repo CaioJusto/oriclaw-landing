@@ -622,7 +622,7 @@ export default function OnboardingPage() {
         {isProvisioning && (
           <div className="animate-fade-in text-center py-8">
             <h1 className="text-3xl font-bold text-white mb-3">Preparando seu servidor...</h1>
-            <p className="text-slate-400 mb-8">Isso pode levar até 15 minutos na primeira vez</p>
+            <p className="text-slate-400 mb-8">Isso pode levar até 20 minutos na primeira vez</p>
             {/* Animated progress bar */}
             <div className="w-full bg-slate-800 rounded-full h-2 mb-6 overflow-hidden">
               <div
