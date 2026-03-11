@@ -395,6 +395,13 @@ export default function OnboardingPage() {
   const [instance, setInstance] = useState<Instance | null>(null);
   const [token, setToken] = useState<string | null>(null);
 
+  // Telegram/Discord channel config state
+  const [telegramToken, setTelegramToken] = useState('');
+  const [telegramConfigured, setTelegramConfigured] = useState(false);
+  const [discordToken, setDiscordToken] = useState('');
+  const [discordGuildId, setDiscordGuildId] = useState('');
+  const [discordConfigured, setDiscordConfigured] = useState(false);
+
   const qrIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Auth check + instance fetch ────────────────────────────────────────────
@@ -486,6 +493,42 @@ export default function OnboardingPage() {
       setStep(3);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Erro ao configurar");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConfigureTelegram = async () => {
+    if (!instance?.id || !token || !telegramToken) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await proxyCall("POST", instance.id, "channels/telegram", { token: telegramToken.trim() }, token);
+      if (result.success || result.status === 'ok') {
+        setTelegramConfigured(true);
+      } else {
+        setError(result.error || 'Erro ao configurar Telegram.');
+      }
+    } catch {
+      setError('Erro de conexão.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConfigureDiscord = async () => {
+    if (!instance?.id || !token || !discordToken || !discordGuildId) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await proxyCall("POST", instance.id, "channels/discord", { token: discordToken.trim(), guild_id: discordGuildId.trim() }, token);
+      if (result.success || result.status === 'ok') {
+        setDiscordConfigured(true);
+      } else {
+        setError(result.error || 'Erro ao configurar Discord.');
+      }
+    } catch {
+      setError('Erro de conexão.');
     } finally {
       setLoading(false);
     }
@@ -886,10 +929,52 @@ export default function OnboardingPage() {
               </>
             )}
 
-            {/* ── Telegram: confirmation flow ── */}
-            {channel === "telegram" && (
+            {/* ── Telegram: token form + confirmation ── */}
+            {channel === "telegram" && !telegramConfigured && (
               <>
-                <h1 className="text-3xl font-bold text-white mb-2">Telegram configurado!</h1>
+                <h1 className="text-3xl font-bold text-white mb-2">Configurar Telegram</h1>
+                <p className="text-slate-400 mb-8">
+                  Cole o token do seu bot Telegram (obtenha em @BotFather).
+                </p>
+
+                <div className="bg-slate-900 rounded-2xl border border-slate-800 p-5 mb-6 text-left space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Token do Bot</label>
+                    <input
+                      type="text"
+                      value={telegramToken}
+                      onChange={(e) => setTelegramToken(e.target.value)}
+                      placeholder="1234567890:ABCdefGHIjklMNOpqrSTUvwxYZ"
+                      className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-violet-600 text-sm transition-colors"
+                    />
+                    <p className="text-slate-500 text-xs mt-1">
+                      Inicie @BotFather no Telegram → /newbot → copie o token
+                    </p>
+                  </div>
+                </div>
+
+                {error && (
+                  <div className="flex items-center gap-2 mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />{error}
+                  </div>
+                )}
+
+                <button
+                  onClick={handleConfigureTelegram}
+                  disabled={!telegramToken.trim() || loading}
+                  className="w-full py-3 px-6 rounded-2xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-violet-600/20"
+                >
+                  {loading ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" /> Conectando...</>
+                  ) : (
+                    <>Conectar Telegram <ChevronRight className="w-5 h-5" /></>
+                  )}
+                </button>
+              </>
+            )}
+            {channel === "telegram" && telegramConfigured && (
+              <>
+                <h1 className="text-3xl font-bold text-white mb-2">Telegram conectado!</h1>
                 <p className="text-slate-400 mb-8">Seu bot Telegram está pronto para receber mensagens.</p>
 
                 <div className="w-64 h-40 rounded-2xl bg-green-500/10 border-2 border-green-500/40 flex flex-col items-center justify-center gap-3 mx-auto mb-8">
@@ -910,10 +995,65 @@ export default function OnboardingPage() {
               </>
             )}
 
-            {/* ── Discord: confirmation flow ── */}
-            {channel === "discord" && (
+            {/* ── Discord: token + guild_id form + confirmation ── */}
+            {channel === "discord" && !discordConfigured && (
               <>
-                <h1 className="text-3xl font-bold text-white mb-2">Discord configurado!</h1>
+                <h1 className="text-3xl font-bold text-white mb-2">Configurar Discord</h1>
+                <p className="text-slate-400 mb-8">
+                  Insira o token do bot e o ID do servidor Discord.
+                </p>
+
+                <div className="bg-slate-900 rounded-2xl border border-slate-800 p-5 mb-6 text-left space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Token do Bot</label>
+                    <input
+                      type="text"
+                      value={discordToken}
+                      onChange={(e) => setDiscordToken(e.target.value)}
+                      placeholder="MTI3NjM4..."
+                      className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-violet-600 text-sm transition-colors"
+                    />
+                    <p className="text-slate-500 text-xs mt-1">
+                      Discord Developer Portal → seu app → Bot → Token
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">ID do Servidor (Guild ID)</label>
+                    <input
+                      type="text"
+                      value={discordGuildId}
+                      onChange={(e) => setDiscordGuildId(e.target.value)}
+                      placeholder="123456789012345678"
+                      className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-violet-600 text-sm transition-colors"
+                    />
+                    <p className="text-slate-500 text-xs mt-1">
+                      Clique direito no servidor no Discord → Copiar ID (modo desenvolvedor deve estar ativo)
+                    </p>
+                  </div>
+                </div>
+
+                {error && (
+                  <div className="flex items-center gap-2 mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />{error}
+                  </div>
+                )}
+
+                <button
+                  onClick={handleConfigureDiscord}
+                  disabled={!discordToken.trim() || !discordGuildId.trim() || loading}
+                  className="w-full py-3 px-6 rounded-2xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-violet-600/20"
+                >
+                  {loading ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" /> Conectando...</>
+                  ) : (
+                    <>Conectar Discord <ChevronRight className="w-5 h-5" /></>
+                  )}
+                </button>
+              </>
+            )}
+            {channel === "discord" && discordConfigured && (
+              <>
+                <h1 className="text-3xl font-bold text-white mb-2">Discord conectado!</h1>
                 <p className="text-slate-400 mb-8">Seu bot Discord está pronto para ser adicionado ao servidor.</p>
 
                 <div className="w-64 h-40 rounded-2xl bg-green-500/10 border-2 border-green-500/40 flex flex-col items-center justify-center gap-3 mx-auto mb-8">

@@ -85,9 +85,11 @@ export default function DashboardPage() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
 
-  const fetchInstance = useCallback(async (userId: string) => {
+  const fetchInstance = useCallback(async (userId: string, accessToken: string) => {
     try {
-      const res = await fetch(`/api/instances/${userId}`);
+      const res = await fetch(`/api/instances/${userId}`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
       if (res.ok) return await res.json() as Instance;
     } catch {}
     return null;
@@ -103,7 +105,7 @@ export default function DashboardPage() {
       setUserEmail(session.user.email ?? null);
       setToken(session.access_token);
 
-      const inst = await fetchInstance(session.user.id);
+      const inst = await fetchInstance(session.user.id, session.access_token);
       setInstance(inst);
       setLoading(false);
 
@@ -121,7 +123,7 @@ export default function DashboardPage() {
       // Poll while provisioning
       if (inst.status === "provisioning") {
         pollInterval = setInterval(async () => {
-          const updated = await fetchInstance(session.user.id);
+          const updated = await fetchInstance(session.user.id, session.access_token);
           if (updated && updated.status !== "provisioning") {
             if (pollInterval) clearInterval(pollInterval);
             setInstance(updated);

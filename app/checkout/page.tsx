@@ -1,10 +1,11 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
 import Link from "next/link";
 import { Check, ArrowLeft, Lock, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 const planDetails: Record<string, {
   name: string;
@@ -49,6 +50,7 @@ const planDetails: Record<string, {
 
 function CheckoutContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const planSlug = searchParams.get("plan") ?? "pro";
   const plan = planDetails[planSlug] ?? planDetails.pro;
   const [loading, setLoading] = useState(false);
@@ -58,10 +60,16 @@ function CheckoutContent() {
     setLoading(true);
     setError(null);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+
       const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/checkout/session`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: planSlug }),
+        body: JSON.stringify({ plan: planSlug, email: user.email, supabase_user_id: user.id }),
       });
       const data = await res.json();
       if (data.url) {
