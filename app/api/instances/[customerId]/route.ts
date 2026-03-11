@@ -3,12 +3,17 @@ import { NextRequest, NextResponse } from 'next/server';
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { customerId: string } }
 ): Promise<NextResponse> {
   try {
+    // Forward Authorization header so backend can validate JWT and ownership
+    const authHeader = req.headers.get('authorization') || '';
     const res = await fetch(`${BACKEND_URL}/api/instances/${params.customerId}`, {
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader,
+      },
       cache: 'no-store',
     });
 

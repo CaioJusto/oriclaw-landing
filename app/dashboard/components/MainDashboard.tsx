@@ -532,15 +532,12 @@ function OpenAIConnectButton({
 function PurchaseModal({
   token,
   onClose,
-  onPurchased,
 }: {
   token: string;
   onClose: () => void;
-  onPurchased: (amount: number) => void;
 }) {
   const [selected, setSelected] = useState<20 | 50 | 100 | null>(null);
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const plans: { amount: 20 | 50 | 100; msgs: string }[] = [
@@ -561,10 +558,14 @@ function PurchaseModal({
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      setSuccess(true);
-      setTimeout(() => { onPurchased(selected); onClose(); }, 1500);
+      if (data.payment_url) {
+        // Redirect to Stripe Hosted Checkout
+        window.location.href = data.payment_url;
+      } else {
+        setError("Erro ao iniciar pagamento. Tente novamente.");
+      }
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Erro ao processar pagamento");
+      setError(e instanceof Error ? e.message : "Erro de conexão.");
     } finally {
       setLoading(false);
     }
@@ -602,14 +603,16 @@ function PurchaseModal({
             <AlertCircle className="w-4 h-4 flex-shrink-0" />{error}
           </div>
         )}
+        <p className="text-slate-500 text-xs text-center mb-3">
+          Após o pagamento, seus créditos serão adicionados automaticamente.
+        </p>
         <button
           onClick={handlePurchase}
-          disabled={!selected || loading || success}
+          disabled={!selected || loading}
           className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-semibold flex items-center justify-center gap-2 transition-all"
         >
-          {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Processando...</>
-            : success ? <><CheckCircle className="w-4 h-4" /> Créditos adicionados!</>
-            : "Finalizar compra"}
+          {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Redirecionando...</>
+            : "Pagar com Stripe"}
         </button>
       </div>
     </div>
@@ -1675,7 +1678,6 @@ export default function MainDashboard({ instance, userEmail, token, onLogout }: 
         <PurchaseModal
           token={token}
           onClose={() => setShowPurchase(false)}
-          onPurchased={(amount) => setCredits((c) => (c ?? 0) + amount)}
         />
       )}
     </>

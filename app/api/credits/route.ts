@@ -2,30 +2,22 @@
  * Next.js API route: /api/credits
  *
  * Proxies credit-related requests to the OriClaw backend.
+ * POST forwards to /api/credits/purchase (Stripe Hosted Checkout).
  */
 import { NextRequest, NextResponse } from 'next/server';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
 
-async function handler(req: NextRequest): Promise<NextResponse> {
-  const targetUrl = `${BACKEND_URL}/api/credits`;
-  const authHeader = req.headers.get('authorization') ?? '';
-
-  const init: RequestInit = {
-    method: req.method,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: authHeader,
-    },
-  };
-
-  if (req.method === 'POST') {
-    const body = await req.text();
-    if (body) init.body = body;
-  }
-
+export async function GET(req: NextRequest): Promise<NextResponse> {
+  const authHeader = req.headers.get('authorization') || '';
   try {
-    const upstream = await fetch(targetUrl, init);
+    const upstream = await fetch(`${BACKEND_URL}/api/credits`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader,
+      },
+    });
     const data = await upstream.json();
     return NextResponse.json(data, { status: upstream.status });
   } catch (err: unknown) {
@@ -34,4 +26,22 @@ async function handler(req: NextRequest): Promise<NextResponse> {
   }
 }
 
-export { handler as GET, handler as POST };
+export async function POST(req: NextRequest): Promise<NextResponse> {
+  const authHeader = req.headers.get('authorization') || '';
+  try {
+    const body = await req.json();
+    const upstream = await fetch(`${BACKEND_URL}/api/credits/purchase`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader,
+      },
+      body: JSON.stringify(body),
+    });
+    const data = await upstream.json();
+    return NextResponse.json(data, { status: upstream.status });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Credits proxy error';
+    return NextResponse.json({ error: msg }, { status: 502 });
+  }
+}

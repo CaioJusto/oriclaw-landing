@@ -52,15 +52,28 @@ function CheckoutContent() {
   const planSlug = searchParams.get("plan") ?? "pro";
   const plan = planDetails[planSlug] ?? planDetails.pro;
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleCheckout = async () => {
     setLoading(true);
-    // In production: call /api/checkout to create Stripe session and redirect
-    // For now simulate redirect
-    await new Promise((r) => setTimeout(r, 1500));
-    // window.location.href = stripeCheckoutUrl;
-    setLoading(false);
-    alert("Integração Stripe pendente de configuração. Configure STRIPE_PUBLISHABLE_KEY no .env.local");
+    setError(null);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/checkout/session`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: planSlug }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        setError(data.error || "Erro ao iniciar checkout. Tente novamente.");
+        setLoading(false);
+      }
+    } catch {
+      setError("Erro ao iniciar checkout. Tente novamente.");
+      setLoading(false);
+    }
   };
 
   return (
@@ -133,6 +146,11 @@ function CheckoutContent() {
 
           {/* Checkout button */}
           <div className="p-6">
+            {error && (
+              <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+                {error}
+              </div>
+            )}
             <button
               onClick={handleCheckout}
               disabled={loading}
@@ -141,7 +159,7 @@ function CheckoutContent() {
               {loading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Redirecionando...
+                  Redirecionando para o Stripe...
                 </>
               ) : (
                 <>

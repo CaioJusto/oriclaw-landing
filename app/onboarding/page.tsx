@@ -276,15 +276,12 @@ function OpenAIConnectButton({
 function PurchaseModal({
   token,
   onClose,
-  onPurchased,
 }: {
   token: string;
   onClose: () => void;
-  onPurchased: () => void;
 }) {
   const [selectedAmount, setSelectedAmount] = useState<20 | 50 | 100 | null>(null);
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const plans: { amount: 20 | 50 | 100; msgs: string; label: string }[] = [
@@ -305,12 +302,14 @@ function PurchaseModal({
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      // TODO: use data.client_secret with Stripe.js for card collection
-      // For now, show success (Stripe integration pending)
-      setSuccess(true);
-      setTimeout(() => { onPurchased(); onClose(); }, 1500);
+      if (data.payment_url) {
+        // Redirect to Stripe Hosted Checkout
+        window.location.href = data.payment_url;
+      } else {
+        setError("Erro ao iniciar pagamento. Tente novamente.");
+      }
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Erro ao processar pagamento");
+      setError(e instanceof Error ? e.message : "Erro de conexão.");
     } finally {
       setLoading(false);
     }
@@ -352,14 +351,16 @@ function PurchaseModal({
           </div>
         )}
 
+        <p className="text-slate-500 text-xs text-center mb-3">
+          Após o pagamento, seus créditos serão adicionados automaticamente.
+        </p>
         <button
           onClick={handlePurchase}
-          disabled={!selectedAmount || loading || success}
+          disabled={!selectedAmount || loading}
           className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-semibold flex items-center justify-center gap-2 transition-all"
         >
-          {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Processando...</>
-            : success ? <><CheckCircle className="w-4 h-4" /> Créditos adicionados!</>
-            : "Finalizar compra"}
+          {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Redirecionando...</>
+            : "Pagar com Stripe"}
         </button>
       </div>
     </div>
@@ -404,7 +405,10 @@ export default function OnboardingPage() {
       setToken(session.access_token);
 
       const res = await fetch(`/api/instances/${session.user.id}`, {
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
       });
       if (res.ok) {
         const inst = await res.json() as Instance;
@@ -830,53 +834,104 @@ export default function OnboardingPage() {
         {/* ── Step 3: Conectar canal ── */}
         {step === 3 && (
           <div className="animate-fade-in text-center">
-            <h1 className="text-3xl font-bold text-white mb-2">
-              {channel === "whatsapp" ? "Conectar WhatsApp" : `Conectar ${channel}`}
-            </h1>
-            <p className="text-slate-400 mb-2">Escaneie o QR code com seu celular</p>
-            <p className="text-slate-500 text-sm mb-8">
-              Abra o WhatsApp → Menu (⋮) → Dispositivos Conectados → Conectar dispositivo
-            </p>
+            {/* ── WhatsApp: QR code flow ── */}
+            {channel === "whatsapp" && (
+              <>
+                <h1 className="text-3xl font-bold text-white mb-2">Conectar WhatsApp</h1>
+                <p className="text-slate-400 mb-2">Escaneie o QR code com seu celular</p>
+                <p className="text-slate-500 text-sm mb-8">
+                  Abra o WhatsApp → Menu (⋮) → Dispositivos Conectados → Conectar dispositivo
+                </p>
 
-            <div className="flex justify-center mb-6">
-              {qrConnected ? (
-                <div className="w-64 h-64 rounded-2xl bg-green-500/10 border-2 border-green-500/40 flex flex-col items-center justify-center gap-3">
-                  <CheckCircle className="w-16 h-16 text-green-400" />
-                  <p className="text-green-400 font-semibold text-lg">WhatsApp conectado!</p>
+                <div className="flex justify-center mb-6">
+                  {qrConnected ? (
+                    <div className="w-64 h-64 rounded-2xl bg-green-500/10 border-2 border-green-500/40 flex flex-col items-center justify-center gap-3">
+                      <CheckCircle className="w-16 h-16 text-green-400" />
+                      <p className="text-green-400 font-semibold text-lg">WhatsApp conectado!</p>
+                    </div>
+                  ) : qrData ? (
+                    <div className="p-3 bg-white rounded-2xl shadow-2xl shadow-violet-600/20">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={qrData} alt="QR Code WhatsApp" className="w-56 h-56 rounded-xl" />
+                    </div>
+                  ) : (
+                    <div className="w-64 h-64 rounded-2xl bg-slate-900 border border-slate-700 flex flex-col items-center justify-center gap-3">
+                      <Loader2 className="w-10 h-10 text-violet-400 animate-spin" />
+                      <p className="text-slate-400 text-sm">Aguardando QR code...</p>
+                      <p className="text-slate-500 text-xs px-4">O assistente está iniciando, pode levar até 1 minuto</p>
+                    </div>
+                  )}
                 </div>
-              ) : qrData ? (
-                <div className="p-3 bg-white rounded-2xl shadow-2xl shadow-violet-600/20">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={qrData} alt="QR Code WhatsApp" className="w-56 h-56 rounded-xl" />
-                </div>
-              ) : (
-                <div className="w-64 h-64 rounded-2xl bg-slate-900 border border-slate-700 flex flex-col items-center justify-center gap-3">
-                  <Loader2 className="w-10 h-10 text-violet-400 animate-spin" />
-                  <p className="text-slate-400 text-sm">Aguardando QR code...</p>
-                  <p className="text-slate-500 text-xs px-4">O assistente está iniciando, pode levar até 1 minuto</p>
-                </div>
-              )}
-            </div>
 
-            <div className="flex items-center justify-center gap-2 text-sm">
-              {qrConnected ? (
-                <span className="text-green-400 flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4" /> Conectado! Redirecionando...
-                </span>
-              ) : (
-                <span className="text-slate-400 flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" /> Aguardando conexão...
-                </span>
-              )}
-            </div>
+                <div className="flex items-center justify-center gap-2 text-sm">
+                  {qrConnected ? (
+                    <span className="text-green-400 flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4" /> Conectado! Redirecionando...
+                    </span>
+                  ) : (
+                    <span className="text-slate-400 flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Aguardando conexão...
+                    </span>
+                  )}
+                </div>
 
-            {!qrConnected && (
-              <button
-                onClick={() => router.push("/dashboard")}
-                className="mt-6 text-slate-500 hover:text-slate-300 text-sm underline transition-colors"
-              >
-                Pular por agora →
-              </button>
+                {!qrConnected && (
+                  <button
+                    onClick={() => router.push("/dashboard")}
+                    className="mt-6 text-slate-500 hover:text-slate-300 text-sm underline transition-colors"
+                  >
+                    Pular por agora →
+                  </button>
+                )}
+              </>
+            )}
+
+            {/* ── Telegram: confirmation flow ── */}
+            {channel === "telegram" && (
+              <>
+                <h1 className="text-3xl font-bold text-white mb-2">Telegram configurado!</h1>
+                <p className="text-slate-400 mb-8">Seu bot Telegram está pronto para receber mensagens.</p>
+
+                <div className="w-64 h-40 rounded-2xl bg-green-500/10 border-2 border-green-500/40 flex flex-col items-center justify-center gap-3 mx-auto mb-8">
+                  <CheckCircle className="w-14 h-14 text-green-400" />
+                  <p className="text-green-400 font-semibold text-lg">✅ Bot Telegram configurado!</p>
+                </div>
+
+                <p className="text-slate-400 text-sm mb-8">
+                  Envie uma mensagem para seu bot no Telegram para testar o assistente.
+                </p>
+
+                <button
+                  onClick={() => setStep(4)}
+                  className="w-full py-3 px-6 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-violet-600/20"
+                >
+                  Próximo <ChevronRight className="w-5 h-5" />
+                </button>
+              </>
+            )}
+
+            {/* ── Discord: confirmation flow ── */}
+            {channel === "discord" && (
+              <>
+                <h1 className="text-3xl font-bold text-white mb-2">Discord configurado!</h1>
+                <p className="text-slate-400 mb-8">Seu bot Discord está pronto para ser adicionado ao servidor.</p>
+
+                <div className="w-64 h-40 rounded-2xl bg-green-500/10 border-2 border-green-500/40 flex flex-col items-center justify-center gap-3 mx-auto mb-8">
+                  <CheckCircle className="w-14 h-14 text-green-400" />
+                  <p className="text-green-400 font-semibold text-lg">✅ Bot Discord configurado!</p>
+                </div>
+
+                <p className="text-slate-400 text-sm mb-8">
+                  Convide o bot para seu servidor e envie uma mensagem para testar o assistente.
+                </p>
+
+                <button
+                  onClick={() => setStep(4)}
+                  className="w-full py-3 px-6 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-violet-600/20"
+                >
+                  Próximo <ChevronRight className="w-5 h-5" />
+                </button>
+              </>
             )}
           </div>
         )}
@@ -968,13 +1023,6 @@ export default function OnboardingPage() {
         <PurchaseModal
           token={token}
           onClose={() => setShowPurchaseModal(false)}
-          onPurchased={() => {
-            // Refresh balance
-            fetch("/api/credits", { headers: { Authorization: `Bearer ${token}` } })
-              .then((r) => r.json())
-              .then((d) => { if (!d.error) setCreditBalance(d.balance_brl ?? 0); })
-              .catch(() => {});
-          }}
         />
       )}
     </main>
