@@ -392,8 +392,14 @@ export default function OnboardingPage() {
   const [error, setError] = useState<string | null>(null);
   const [qrData, setQrData] = useState<string | null>(null);
   const [qrConnected, setQrConnected] = useState(false);
+  const [qrTimeout, setQrTimeout] = useState(false);
+  const [qrConnectionError, setQrConnectionError] = useState(false);
+  const qrAttemptRef = useRef(0);
+  const qrConsecErrorsRef = useRef(0);
   const [instance, setInstance] = useState<Instance | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [isProvisioning, setIsProvisioning] = useState(false);
+  const provisioningPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Telegram/Discord channel config state
   const [telegramToken, setTelegramToken] = useState('');
@@ -411,20 +417,52 @@ export default function OnboardingPage() {
       if (!session) { router.push("/login"); return; }
       setToken(session.access_token);
 
-      const res = await fetch(`/api/instances/${session.user.id}`, {
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`,
-        },
-      });
-      if (res.ok) {
-        const inst = await res.json() as Instance;
-        setInstance(inst);
-        if (inst.status === "running") router.push("/dashboard");
-        // Restore chatgpt_connected if already done
-        if (inst.metadata?.chatgpt_connected) setChatgptConnected(true);
-      }
+      const fetchInstance = async () => {
+        const res = await fetch(`/api/instances/${session.user.id}`, {
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.access_token}`,
+          },
+        });
+        if (res.ok) {
+          const inst = await res.json() as Instance;
+          setInstance(inst);
+          if (inst.status === "running") { router.push("/dashboard"); return; }
+          if (inst.metadata?.chatgpt_connected) setChatgptConnected(true);
+
+          if (inst.status === "provisioning") {
+            setIsProvisioning(true);
+            // Start polling every 8s until status changes
+            if (provisioningPollRef.current) clearInterval(provisioningPollRef.current);
+            provisioningPollRef.current = setInterval(async () => {
+              try {
+                const r2 = await fetch(`/api/instances/${session.user.id}`, {
+                  headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${session.access_token}`,
+                  },
+                });
+                if (r2.ok) {
+                  const updated = await r2.json() as Instance;
+                  setInstance(updated);
+                  if (updated.status !== "provisioning") {
+                    if (provisioningPollRef.current) clearInterval(provisioningPollRef.current);
+                    setIsProvisioning(false);
+                    if (updated.status === "running") router.push("/dashboard");
+                  }
+                }
+              } catch { /* keep polling */ }
+            }, 8000);
+          } else {
+            setIsProvisioning(false);
+          }
+        }
+      };
+
+      await fetchInstance();
     })();
+
+    return () => { if (provisioningPollRef.current) clearInterval(provisioningPollRef.current); };
   }, [router]);
 
   // ── Fetch credit balance when credits mode selected ────────────────────────
@@ -438,11 +476,29 @@ export default function OnboardingPage() {
   }, [aiMode, token]);
 
   // ── QR polling ────────────────────────────────────────────────────────────
+  const MAX_QR_ATTEMPTS = 60; // 60 × 3s = 3 minutes
+  const MAX_CONSEC_ERRORS = 10;
+
   const startQRPolling = useCallback(() => {
     if (!instance?.id || !token) return;
+    qrAttemptRef.current = 0;
+    qrConsecErrorsRef.current = 0;
+    setQrTimeout(false);
+    setQrConnectionError(false);
+
     const poll = async () => {
+      qrAttemptRef.current += 1;
+
+      // Timeout after max attempts
+      if (qrAttemptRef.current > MAX_QR_ATTEMPTS) {
+        if (qrIntervalRef.current) clearInterval(qrIntervalRef.current);
+        setQrTimeout(true);
+        return;
+      }
+
       try {
         const data = await proxyCall("GET", instance.id, "qr", undefined, token);
+        qrConsecErrorsRef.current = 0; // reset on success
         if (data.connected) {
           setQrConnected(true);
           if (qrIntervalRef.current) clearInterval(qrIntervalRef.current);
@@ -450,7 +506,12 @@ export default function OnboardingPage() {
         } else if (data.qr) {
           setQrData(data.qr);
         }
-      } catch { /* ignore */ }
+      } catch {
+        qrConsecErrorsRef.current += 1;
+        if (qrConsecErrorsRef.current >= MAX_CONSEC_ERRORS) {
+          setQrConnectionError(true);
+        }
+      }
     };
     poll();
     qrIntervalRef.current = setInterval(poll, 3000);
@@ -470,7 +531,7 @@ export default function OnboardingPage() {
       const body: Record<string, unknown> = {
         channel,
         assistant_name: assistantName,
-        ...(personality ? { personality } : {}),
+        ...(personality ? { system_prompt: personality } : {}),
       };
 
       if (aiMode === "byok") {
@@ -556,10 +617,40 @@ export default function OnboardingPage() {
       </div>
 
       <div className="w-full max-w-xl">
-        <StepDots current={step} total={5} />
+
+        {/* ── Provisioning wait screen ── */}
+        {isProvisioning && (
+          <div className="animate-fade-in text-center py-8">
+            <h1 className="text-3xl font-bold text-white mb-3">Preparando seu servidor...</h1>
+            <p className="text-slate-400 mb-8">Isso pode levar até 15 minutos na primeira vez</p>
+            {/* Animated progress bar */}
+            <div className="w-full bg-slate-800 rounded-full h-2 mb-6 overflow-hidden">
+              <div
+                className="h-2 rounded-full bg-violet-500"
+                style={{
+                  animation: "provisioningProgress 900s linear forwards",
+                  width: "0%",
+                }}
+              />
+            </div>
+            <style>{`
+              @keyframes provisioningProgress {
+                from { width: 0%; }
+                to { width: 95%; }
+              }
+            `}</style>
+            <p className="text-slate-500 text-lg">☕ Aproveite para preparar um café</p>
+            <div className="flex items-center justify-center gap-2 mt-8 text-slate-500 text-sm">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Verificando a cada 8 segundos...</span>
+            </div>
+          </div>
+        )}
+
+        {!isProvisioning && <StepDots current={step} total={5} />}
 
         {/* ── Step 0: Escolha seu canal ── */}
-        {step === 0 && (
+        {!isProvisioning && step === 0 && (
           <div className="animate-fade-in">
             <h1 className="text-3xl font-bold text-white text-center mb-2">Escolha seu canal</h1>
             <p className="text-slate-400 text-center mb-8">
@@ -606,7 +697,7 @@ export default function OnboardingPage() {
         )}
 
         {/* ── Step 1: Como você quer usar a IA? ── */}
-        {step === 1 && (
+        {!isProvisioning && step === 1 && (
           <div className="animate-fade-in">
             <h1 className="text-3xl font-bold text-white text-center mb-2">Como usar a IA?</h1>
             <p className="text-slate-400 text-center mb-6">
@@ -812,7 +903,7 @@ export default function OnboardingPage() {
         )}
 
         {/* ── Step 2: Nome do assistente ── */}
-        {step === 2 && (
+        {!isProvisioning && step === 2 && (
           <div className="animate-fade-in">
             <h1 className="text-3xl font-bold text-white text-center mb-2">
               Dê um nome ao seu assistente
@@ -875,7 +966,7 @@ export default function OnboardingPage() {
         )}
 
         {/* ── Step 3: Conectar canal ── */}
-        {step === 3 && (
+        {!isProvisioning && step === 3 && (
           <div className="animate-fade-in text-center">
             {/* ── WhatsApp: QR code flow ── */}
             {channel === "whatsapp" && (
@@ -891,6 +982,22 @@ export default function OnboardingPage() {
                     <div className="w-64 h-64 rounded-2xl bg-green-500/10 border-2 border-green-500/40 flex flex-col items-center justify-center gap-3">
                       <CheckCircle className="w-16 h-16 text-green-400" />
                       <p className="text-green-400 font-semibold text-lg">WhatsApp conectado!</p>
+                    </div>
+                  ) : qrTimeout ? (
+                    <div className="w-64 rounded-2xl bg-red-500/10 border border-red-500/30 flex flex-col items-center justify-center gap-3 p-6">
+                      <AlertCircle className="w-10 h-10 text-red-400" />
+                      <p className="text-red-400 font-semibold text-sm text-center">Não foi possível gerar o QR Code. O servidor pode estar iniciando ainda.</p>
+                      <button
+                        onClick={() => startQRPolling()}
+                        className="mt-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium transition-all"
+                      >
+                        Tentar novamente
+                      </button>
+                    </div>
+                  ) : qrConnectionError ? (
+                    <div className="w-64 rounded-2xl bg-yellow-500/10 border border-yellow-500/30 flex flex-col items-center justify-center gap-3 p-6">
+                      <AlertCircle className="w-10 h-10 text-yellow-400" />
+                      <p className="text-yellow-400 font-semibold text-sm text-center">Problema de conexão com o servidor. Verifique se o VPS está online.</p>
                     </div>
                   ) : qrData ? (
                     <div className="p-3 bg-white rounded-2xl shadow-2xl shadow-violet-600/20">
@@ -1077,7 +1184,7 @@ export default function OnboardingPage() {
         )}
 
         {/* ── Step 4: Pronto! ── */}
-        {step === 4 && (
+        {!isProvisioning && step === 4 && (
           <div className="animate-fade-in text-center">
             <div className="text-6xl mb-6">🎉</div>
             <h1 className="text-3xl font-bold text-white mb-3">Seu assistente está no ar!</h1>
