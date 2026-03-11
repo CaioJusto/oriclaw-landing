@@ -594,7 +594,7 @@ function PurchaseModal({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/credits", {
+      const res = await fetch("/api/credits/purchase", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ amount_brl: selected }),

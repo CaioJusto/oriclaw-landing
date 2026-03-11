@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Loader2, Server, Clock, AlertTriangle } from "lucide-react";
@@ -179,6 +179,57 @@ function Toast({ message, onDismiss }: { message: string; onDismiss: () => void 
   );
 }
 
+// ── Error Boundary ────────────────────────────────────────────────────────────
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallback?: React.ReactNode },
+  { hasError: boolean; error?: Error }
+> {
+  constructor(props: { children: React.ReactNode; fallback?: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback ?? (
+        <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+          <div className="text-center space-y-4 p-8">
+            <p className="text-red-400 text-lg font-medium">Algo deu errado</p>
+            <p className="text-gray-500 text-sm">{this.state.error?.message}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-violet-600 text-white rounded-lg text-sm hover:bg-violet-700"
+            >
+              Recarregar página
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// ── fetchInstance with retry ──────────────────────────────────────────────────
+async function fetchInstanceWithRetry(userId: string, token: string, maxRetries = 3): Promise<Instance | null> {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const res = await fetch(`/api/instances/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.status === 404) return null; // genuinamente sem instância
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      if (i === maxRetries - 1) return null; // última tentativa falhou
+      await new Promise(r => setTimeout(r, 1000 * (i + 1))); // backoff 1s, 2s
+    }
+  }
+  return null;
+}
+
 // ── Dashboard Page (router) ───────────────────────────────────────────────────
 export default function DashboardPage() {
   const router = useRouter();
@@ -199,13 +250,7 @@ export default function DashboardPage() {
   const sessionRef = useRef<{ userId: string; accessToken: string } | null>(null);
 
   const fetchInstance = useCallback(async (userId: string, accessToken: string) => {
-    try {
-      const res = await fetch(`/api/instances/${userId}`, {
-        headers: { 'Authorization': `Bearer ${accessToken}` }
-      });
-      if (res.ok) return await res.json() as Instance;
-    } catch {}
-    return null;
+    return fetchInstanceWithRetry(userId, accessToken);
   }, []);
 
   useEffect(() => {
@@ -367,12 +412,14 @@ export default function DashboardPage() {
       <>
         {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
         <main className="min-h-screen bg-slate-950">
-          <MainDashboard
-            instance={instance}
-            userEmail={userEmail ?? ""}
-            token={token ?? ""}
-            onLogout={handleLogout}
-          />
+          <ErrorBoundary>
+            <MainDashboard
+              instance={instance}
+              userEmail={userEmail ?? ""}
+              token={token ?? ""}
+              onLogout={handleLogout}
+            />
+          </ErrorBoundary>
         </main>
       </>
     );
