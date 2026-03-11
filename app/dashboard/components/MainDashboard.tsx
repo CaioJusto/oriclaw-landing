@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Activity,
-  Wifi,
   CreditCard,
   RefreshCw,
   Eye,
@@ -17,6 +16,13 @@ import {
   LogOut,
   ChevronDown,
   ChevronUp,
+  MessageCircle,
+  Send,
+  Hash,
+  Zap,
+  Key,
+  ExternalLink,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -36,6 +42,14 @@ interface HealthData {
   uptime: number;
 }
 
+type ChannelStatus = "connected" | "disconnected" | "not_configured";
+
+interface ChannelsData {
+  whatsapp: { status: ChannelStatus; phone: string | null };
+  telegram: { status: ChannelStatus; username: string | null };
+  discord: { status: ChannelStatus; guild: string | null };
+}
+
 interface Props {
   instance: Instance;
   userEmail: string;
@@ -45,7 +59,7 @@ interface Props {
 
 // ── API helper ────────────────────────────────────────────────────────────────
 async function proxyCall(
-  method: "GET" | "POST",
+  method: "GET" | "POST" | "DELETE",
   instanceId: string,
   action: string,
   token: string,
@@ -73,7 +87,33 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-// ── QR Modal ───────────────────────────────────────────────────────────────────
+// ── Status badge ───────────────────────────────────────────────────────────────
+function StatusBadge({ status }: { status: ChannelStatus }) {
+  if (status === "connected") {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-green-400">
+        <span className="w-1.5 h-1.5 rounded-full bg-green-400 shadow-sm shadow-green-400/50" />
+        Conectado
+      </span>
+    );
+  }
+  if (status === "disconnected") {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-red-400">
+        <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+        Desconectado
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-500">
+      <span className="w-1.5 h-1.5 rounded-full bg-slate-600" />
+      Não configurado
+    </span>
+  );
+}
+
+// ── QR Modal (WhatsApp) ────────────────────────────────────────────────────────
 function QRModal({
   instanceId,
   token,
@@ -111,28 +151,38 @@ function QRModal({
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [fetchQR]);
 
+  useEffect(() => {
+    if (connected) {
+      const t = setTimeout(onClose, 2000);
+      return () => clearTimeout(t);
+    }
+  }, [connected, onClose]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
       <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-sm">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-white font-semibold text-lg">Conectar WhatsApp</h3>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 transition-colors"
-          >
+          <div className="flex items-center gap-2">
+            <MessageCircle className="w-5 h-5 text-green-400" />
+            <h3 className="text-white font-semibold text-lg">Conectar WhatsApp</h3>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <p className="text-slate-400 text-sm mb-4">
-          Abra o WhatsApp → Menu → Dispositivos Conectados → Conectar dispositivo
+        <p className="text-slate-400 text-sm mb-1">
+          Abra o WhatsApp → Menu <span className="font-mono">⋮</span> → Dispositivos conectados → Conectar dispositivo
+        </p>
+        <p className="text-slate-500 text-xs mb-4">
+          O QR code atualiza automaticamente a cada 3 segundos.
         </p>
 
         <div className="flex justify-center mb-4">
           {connected ? (
             <div className="w-56 h-56 rounded-2xl bg-green-500/10 border-2 border-green-500/40 flex flex-col items-center justify-center gap-3">
               <CheckCircle className="w-14 h-14 text-green-400" />
-              <p className="text-green-400 font-semibold">Conectado!</p>
+              <p className="text-green-400 font-semibold">✅ Conectado!</p>
             </div>
           ) : qr ? (
             <div className="p-2 bg-white rounded-xl">
@@ -143,39 +193,414 @@ function QRModal({
             <div className="w-56 h-56 rounded-2xl bg-slate-800 border border-slate-700 flex flex-col items-center justify-center gap-2 px-4">
               <AlertCircle className="w-10 h-10 text-slate-500" />
               <p className="text-slate-400 text-sm text-center">{error}</p>
-              <button
-                onClick={fetchQR}
-                className="text-violet-400 text-sm hover:text-violet-300"
-              >
+              <button onClick={fetchQR} className="text-violet-400 text-sm hover:text-violet-300">
                 Tentar novamente
               </button>
             </div>
           ) : (
             <div className="w-56 h-56 rounded-2xl bg-slate-800 border border-slate-700 flex flex-col items-center justify-center gap-3">
               <Loader2 className="w-10 h-10 text-violet-400 animate-spin" />
-              <p className="text-slate-400 text-sm">Carregando QR...</p>
+              <p className="text-slate-400 text-sm">Aguardando leitura...</p>
             </div>
           )}
         </div>
 
-        <p className="text-slate-500 text-xs text-center">
-          O QR code atualiza automaticamente a cada 3 segundos
-        </p>
+        <div className="flex items-center justify-center gap-2 text-sm">
+          {connected ? (
+            <span className="text-green-400 flex items-center gap-1.5">
+              <CheckCircle className="w-4 h-4" /> Conectado! Fechando...
+            </span>
+          ) : (
+            <span className="text-slate-500 flex items-center gap-1.5">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Aguardando leitura...
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Telegram Modal ─────────────────────────────────────────────────────────────
+function TelegramModal({
+  instanceId,
+  token,
+  onClose,
+  onConnected,
+}: {
+  instanceId: string;
+  token: string;
+  onClose: () => void;
+  onConnected: () => void;
+}) {
+  const [botToken, setBotToken] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleConnect = async () => {
+    if (!botToken.trim()) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await proxyCall("POST", instanceId, "channels/telegram", token, { token: botToken.trim() });
+      if (result.error) throw new Error(result.error);
+      setSuccess(true);
+      setTimeout(() => { onConnected(); onClose(); }, 1500);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Erro ao conectar Telegram");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-sm">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2">
+            <Send className="w-5 h-5 text-sky-400" />
+            <h3 className="text-white font-semibold text-lg">Conectar Telegram</h3>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="bg-slate-800/60 rounded-xl p-3 mb-4 text-sm text-slate-400 leading-relaxed">
+          <p className="font-medium text-slate-300 mb-1">Como criar um bot Telegram:</p>
+          <ol className="list-decimal list-inside space-y-1 text-xs">
+            <li>Abra o Telegram e procure por <span className="text-sky-400">@BotFather</span></li>
+            <li>Envie <code className="bg-slate-700 px-1 rounded">/newbot</code> e siga as instruções</li>
+            <li>Copie o <strong className="text-white">token</strong> que o BotFather enviar</li>
+          </ol>
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-slate-300 mb-2">Token do bot Telegram</label>
+          <input
+            type="text"
+            value={botToken}
+            onChange={(e) => setBotToken(e.target.value)}
+            placeholder="123456789:AAxxxxxx..."
+            className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 text-sm transition-colors"
+          />
+        </div>
+
+        {error && (
+          <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm mb-4">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />{error}
+          </div>
+        )}
+
+        <button
+          onClick={handleConnect}
+          disabled={!botToken.trim() || loading || success}
+          className="w-full py-3 rounded-xl bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white font-semibold flex items-center justify-center gap-2 transition-all"
+        >
+          {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Conectando...</>
+            : success ? <><CheckCircle className="w-4 h-4" /> Conectado!</>
+            : "Conectar bot"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Discord Modal ──────────────────────────────────────────────────────────────
+function DiscordModal({
+  instanceId,
+  token,
+  onClose,
+  onConnected,
+}: {
+  instanceId: string;
+  token: string;
+  onClose: () => void;
+  onConnected: () => void;
+}) {
+  const [botToken, setBotToken] = useState("");
+  const [guildId, setGuildId] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleConnect = async () => {
+    if (!botToken.trim()) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await proxyCall("POST", instanceId, "channels/discord", token, {
+        token: botToken.trim(),
+        guild_id: guildId.trim() || undefined,
+      });
+      if (result.error) throw new Error(result.error);
+      setSuccess(true);
+      setTimeout(() => { onConnected(); onClose(); }, 1500);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Erro ao conectar Discord");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-sm">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2">
+            <Hash className="w-5 h-5 text-indigo-400" />
+            <h3 className="text-white font-semibold text-lg">Conectar Discord</h3>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="bg-slate-800/60 rounded-xl p-3 mb-4 text-sm text-slate-400 leading-relaxed">
+          <p className="font-medium text-slate-300 mb-1">Como criar um bot Discord:</p>
+          <ol className="list-decimal list-inside space-y-1 text-xs">
+            <li>Acesse <a href="https://discord.com/developers" target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline">discord.com/developers</a></li>
+            <li>Crie uma aplicação → seção <strong className="text-white">Bot</strong> → gere o token</li>
+            <li>Em <strong className="text-white">OAuth2</strong>, adicione o bot ao seu servidor</li>
+            <li>Cole o <strong className="text-white">Token</strong> abaixo</li>
+          </ol>
+        </div>
+
+        <div className="space-y-3 mb-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Token do bot Discord</label>
+            <input
+              type="text"
+              value={botToken}
+              onChange={(e) => setBotToken(e.target.value)}
+              placeholder="MTxxxxxx.xxxxxx..."
+              className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm transition-colors"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">
+              ID do Servidor{" "}
+              <span className="text-slate-500 font-normal">(opcional)</span>
+            </label>
+            <input
+              type="text"
+              value={guildId}
+              onChange={(e) => setGuildId(e.target.value)}
+              placeholder="1234567890123456789"
+              className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm transition-colors"
+            />
+            <p className="text-slate-500 text-xs mt-1">
+              Clique com botão direito no servidor → Copiar ID do servidor
+            </p>
+          </div>
+        </div>
+
+        {error && (
+          <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm mb-4">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />{error}
+          </div>
+        )}
+
+        <button
+          onClick={handleConnect}
+          disabled={!botToken.trim() || loading || success}
+          className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold flex items-center justify-center gap-2 transition-all"
+        >
+          {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Conectando...</>
+            : success ? <><CheckCircle className="w-4 h-4" /> Conectado!</>
+            : "Conectar bot"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── OpenAI OAuth button (reusable in Config modal) ────────────────────────────
+function OpenAIConnectButton({
+  instanceId,
+  token,
+  connected,
+  onConnected,
+}: {
+  instanceId: string;
+  token: string;
+  connected: boolean;
+  onConnected: () => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [waiting, setWaiting] = useState(false);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const startPolling = useCallback(() => {
+    setWaiting(true);
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/proxy/${instanceId}/openai-status`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (data.connected) {
+          if (pollRef.current) clearInterval(pollRef.current);
+          setWaiting(false);
+          onConnected();
+        }
+      } catch { /* ignore */ }
+    }, 3000);
+  }, [instanceId, token, onConnected]);
+
+  useEffect(() => {
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, []);
+
+  const handleConnect = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/auth/openai/url/${instanceId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      window.open(data.url, "_blank", "width=600,height=700,noopener");
+      startPolling();
+    } catch (e: unknown) {
+      console.error("OAuth error:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (connected) {
+    return (
+      <div className="flex items-center gap-3 p-3 rounded-xl bg-green-500/10 border border-green-500/30">
+        <CheckCircle className="w-4 h-4 text-green-400" />
+        <span className="text-green-400 text-sm font-medium">ChatGPT Plus conectado</span>
+      </div>
+    );
+  }
+
+  if (waiting) {
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800 border border-slate-700">
+          <Loader2 className="w-4 h-4 text-violet-400 animate-spin" />
+          <span className="text-slate-300 text-sm">Aguardando autorização na janela OpenAI...</span>
+        </div>
+        <button onClick={handleConnect} className="w-full text-xs text-slate-500 hover:text-slate-300 transition-colors flex items-center justify-center gap-1">
+          <ExternalLink className="w-3 h-3" /> Abrir janela novamente
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={handleConnect}
+      disabled={loading}
+      className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl bg-white hover:bg-gray-50 disabled:opacity-60 border border-gray-200 text-gray-800 font-semibold text-sm transition-all shadow-sm"
+    >
+      {loading ? (
+        <Loader2 className="w-4 h-4 animate-spin text-gray-600" />
+      ) : (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.872zm16.597 3.855l-5.833-3.387 2.019-1.165a.076.076 0 0 1 .072 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.412-.666zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08L8.704 5.46a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z" fill="currentColor"/>
+        </svg>
+      )}
+      Continuar com OpenAI
+    </button>
+  );
+}
+
+// ── Purchase Modal ─────────────────────────────────────────────────────────────
+function PurchaseModal({
+  token,
+  onClose,
+  onPurchased,
+}: {
+  token: string;
+  onClose: () => void;
+  onPurchased: (amount: number) => void;
+}) {
+  const [selected, setSelected] = useState<20 | 50 | 100 | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const plans: { amount: 20 | 50 | 100; msgs: string }[] = [
+    { amount: 20, msgs: "≈ 1.000 mensagens" },
+    { amount: 50, msgs: "≈ 3.000 mensagens" },
+    { amount: 100, msgs: "≈ 7.000 mensagens" },
+  ];
+
+  const handlePurchase = async () => {
+    if (!selected) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/credits", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ amount_brl: selected }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setSuccess(true);
+      setTimeout(() => { onPurchased(selected); onClose(); }, 1500);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Erro ao processar pagamento");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-sm">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-white font-semibold text-lg">Comprar créditos</h3>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <p className="text-slate-400 text-sm mb-4">Processado via OpenRouter. Créditos não expiram.</p>
+        <div className="space-y-2 mb-5">
+          {plans.map((p) => (
+            <button
+              key={p.amount}
+              onClick={() => setSelected(p.amount)}
+              className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${
+                selected === p.amount
+                  ? "bg-violet-600/20 border-violet-500 border-2"
+                  : "bg-slate-800 border-slate-700 hover:border-slate-600"
+              }`}
+            >
+              <span className="text-white font-bold">R${p.amount}</span>
+              <span className="text-slate-400 text-sm">{p.msgs}</span>
+              {selected === p.amount && <CheckCircle className="w-4 h-4 text-violet-400 ml-2 flex-shrink-0" />}
+            </button>
+          ))}
+        </div>
+        {error && (
+          <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm mb-4">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />{error}
+          </div>
+        )}
+        <button
+          onClick={handlePurchase}
+          disabled={!selected || loading || success}
+          className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-semibold flex items-center justify-center gap-2 transition-all"
+        >
+          {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Processando...</>
+            : success ? <><CheckCircle className="w-4 h-4" /> Créditos adicionados!</>
+            : "Finalizar compra"}
+        </button>
       </div>
     </div>
   );
 }
 
 // ── Log Drawer ────────────────────────────────────────────────────────────────
-function LogDrawer({
-  instanceId,
-  token,
-  onClose,
-}: {
-  instanceId: string;
-  token: string;
-  onClose: () => void;
-}) {
+function LogDrawer({ instanceId, token, onClose }: { instanceId: string; token: string; onClose: () => void }) {
   const [logs, setLogs] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -197,16 +622,10 @@ function LogDrawer({
         <div className="flex items-center justify-between p-4 border-b border-slate-800 flex-shrink-0">
           <h3 className="text-white font-semibold">Logs do Assistente</h3>
           <div className="flex gap-2">
-            <button
-              onClick={fetchLogs}
-              className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 transition-colors"
-            >
+            <button onClick={fetchLogs} className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 transition-colors">
               <RefreshCw className="w-4 h-4" />
             </button>
-            <button
-              onClick={onClose}
-              className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 transition-colors"
-            >
+            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 transition-colors">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -232,17 +651,23 @@ function LogDrawer({
 function ConfigModal({
   instanceId,
   token,
+  currentAiMode,
   onClose,
   onSaved,
 }: {
   instanceId: string;
   token: string;
+  currentAiMode?: string;
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const [tab, setTab] = useState<"byok" | "credits" | "chatgpt">(
+    currentAiMode === "credits" ? "credits" : currentAiMode === "chatgpt" ? "chatgpt" : "byok"
+  );
   const [provider, setProvider] = useState<"anthropic" | "openai">("anthropic");
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState("");
+  const [chatgptConnected, setChatgptConnected] = useState(currentAiMode === "chatgpt");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -256,9 +681,18 @@ function ConfigModal({
     setLoading(true);
     setError(null);
     try {
-      const body: Record<string, string> = {};
-      if (apiKey) body[provider === "anthropic" ? "anthropic_key" : "openai_key"] = apiKey;
-      if (model) body.model = model;
+      const body: Record<string, unknown> = {};
+
+      if (tab === "byok") {
+        if (apiKey) body[provider === "anthropic" ? "anthropic_key" : "openai_key"] = apiKey;
+        if (model) body.model = model;
+      } else if (tab === "credits") {
+        body.credits_mode = true;
+        if (model) body.model = model;
+      } else if (tab === "chatgpt") {
+        body.chatgpt_mode = true;
+        if (model) body.model = model;
+      }
 
       const result = await proxyCall("POST", instanceId, "configure", token, body);
       if (result.error) throw new Error(result.error);
@@ -271,85 +705,195 @@ function ConfigModal({
     }
   };
 
+  const tabs = [
+    { id: "byok" as const, label: "Chave de API", icon: Key },
+    { id: "credits" as const, label: "Créditos OriClaw", icon: CreditCard },
+    { id: "chatgpt" as const, label: "ChatGPT Plus", icon: Zap },
+  ];
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
       <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-md">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-white font-semibold text-lg">Configurações</h3>
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-white font-semibold text-lg">Trocar modelo / IA</h3>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Provedor de IA</label>
-            <div className="flex gap-2">
-              {(["anthropic", "openai"] as const).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => { setProvider(p); setModel(""); }}
-                  className={`flex-1 py-2 px-3 rounded-xl text-sm font-medium transition-all border ${
-                    provider === p
-                      ? "bg-violet-600/20 border-violet-500 text-violet-300"
-                      : "bg-slate-800 border-slate-700 text-slate-400 hover:text-white"
-                  }`}
-                >
-                  {p === "anthropic" ? "Claude (Anthropic)" : "GPT (OpenAI)"}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Nova chave de API{" "}
-              <span className="text-slate-500 font-normal">(deixe em branco para manter)</span>
-            </label>
-            <input
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder={provider === "anthropic" ? "sk-ant-..." : "sk-..."}
-              className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-violet-600 text-sm"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Modelo</label>
-            <select
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-violet-600 text-sm"
+        {/* Tabs */}
+        <div className="flex gap-1 p-1 bg-slate-800 rounded-xl mb-5">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => { setTab(t.id); setError(null); }}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${
+                tab === t.id ? "bg-slate-700 text-white" : "text-slate-400 hover:text-slate-300"
+              }`}
             >
-              <option value="">Manter atual</option>
-              {modelOptions[provider].map((m) => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
-          </div>
+              <t.icon className="w-3.5 h-3.5" />
+              {t.label}
+            </button>
+          ))}
+        </div>
 
-          {error && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              {error}
+        <div className="space-y-4">
+          {/* BYOK tab */}
+          {tab === "byok" && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Provedor de IA</label>
+                <div className="flex gap-2">
+                  {(["anthropic", "openai"] as const).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => { setProvider(p); setModel(""); }}
+                      className={`flex-1 py-2 px-3 rounded-xl text-sm font-medium transition-all border ${
+                        provider === p
+                          ? "bg-violet-600/20 border-violet-500 text-violet-300"
+                          : "bg-slate-800 border-slate-700 text-slate-400 hover:text-white"
+                      }`}
+                    >
+                      {p === "anthropic" ? "Claude (Anthropic)" : "GPT (OpenAI)"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Nova chave de API{" "}
+                  <span className="text-slate-500 font-normal">(deixe em branco para manter)</span>
+                </label>
+                <input
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder={provider === "anthropic" ? "sk-ant-..." : "sk-..."}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-violet-600 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Modelo</label>
+                <select
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-violet-600 text-sm"
+                >
+                  <option value="">Manter atual</option>
+                  {modelOptions[provider].map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
+
+          {/* Credits tab */}
+          {tab === "credits" && (
+            <div className="p-4 rounded-xl bg-violet-600/10 border border-violet-500/30">
+              <div className="flex items-center gap-2 mb-2">
+                <CreditCard className="w-4 h-4 text-violet-400" />
+                <p className="text-violet-300 font-medium text-sm">Créditos OriClaw</p>
+              </div>
+              <p className="text-slate-400 text-sm">
+                Sem conta de IA necessária. O OriClaw usa nosso OpenRouter para você.
+                Compre créditos no painel após salvar.
+              </p>
             </div>
           )}
 
-          <button
-            onClick={handleSave}
-            disabled={loading || success}
-            className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-60 text-white font-semibold flex items-center justify-center gap-2 transition-all"
-          >
-            {loading ? (
-              <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</>
-            ) : success ? (
-              <><CheckCircle className="w-4 h-4" /> Salvo!</>
-            ) : (
-              "Salvar configurações"
-            )}
-          </button>
+          {/* ChatGPT Plus tab */}
+          {tab === "chatgpt" && (
+            <div className="space-y-3">
+              <div className="p-3 rounded-xl bg-slate-800/60 border border-slate-700 text-xs text-slate-400">
+                Conecte sua conta OpenAI com ChatGPT Plus para usar o GPT-4 sem chave de API.
+              </div>
+              <OpenAIConnectButton
+                instanceId={instanceId}
+                token={token}
+                connected={chatgptConnected}
+                onConnected={() => setChatgptConnected(true)}
+              />
+            </div>
+          )}
         </div>
+
+        {error && (
+          <div className="flex items-center gap-2 p-3 mt-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />{error}
+          </div>
+        )}
+
+        <button
+          onClick={handleSave}
+          disabled={loading || success || (tab === "chatgpt" && !chatgptConnected)}
+          className="w-full mt-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-60 text-white font-semibold flex items-center justify-center gap-2 transition-all"
+        >
+          {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</>
+            : success ? <><CheckCircle className="w-4 h-4" /> Salvo!</>
+            : "Salvar configurações"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Channel Card ───────────────────────────────────────────────────────────────
+function ChannelCard({
+  name,
+  icon: Icon,
+  iconColor,
+  status,
+  info,
+  onConfigure,
+  onReconnect,
+  onDisconnect,
+}: {
+  name: string;
+  icon: React.ComponentType<{ className?: string }>;
+  iconColor: string;
+  status: ChannelStatus;
+  info: string | null;
+  onConfigure: () => void;
+  onReconnect: () => void;
+  onDisconnect: () => void;
+}) {
+  return (
+    <div className="bg-slate-800/50 rounded-2xl border border-slate-700 p-4 flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <Icon className={`w-4 h-4 ${iconColor}`} />
+        <span className="text-white font-medium text-sm">{name}</span>
+      </div>
+
+      <StatusBadge status={status} />
+
+      {info && (
+        <p className="text-slate-400 text-xs font-mono truncate">{info}</p>
+      )}
+
+      <div className="mt-auto">
+        {status === "connected" ? (
+          <button
+            onClick={onDisconnect}
+            className="w-full py-1.5 rounded-lg border border-red-500/40 text-red-400 text-xs font-medium hover:bg-red-500/10 transition-all flex items-center justify-center gap-1"
+          >
+            <Trash2 className="w-3 h-3" /> Desconectar
+          </button>
+        ) : status === "disconnected" ? (
+          <button
+            onClick={onReconnect}
+            className="w-full py-1.5 rounded-lg bg-violet-600/20 border border-violet-500/30 text-violet-400 text-xs font-medium hover:bg-violet-600/30 transition-all"
+          >
+            Reconectar
+          </button>
+        ) : (
+          <button
+            onClick={onConfigure}
+            className="w-full py-1.5 rounded-lg bg-violet-600/20 border border-violet-500/30 text-violet-400 text-xs font-medium hover:bg-violet-600/30 transition-all"
+          >
+            Configurar
+          </button>
+        )}
       </div>
     </div>
   );
@@ -359,41 +903,77 @@ function ConfigModal({
 export default function MainDashboard({ instance, userEmail, token, onLogout }: Props) {
   const [health, setHealth] = useState<HealthData | null>(null);
   const [healthLoading, setHealthLoading] = useState(true);
+  const [channels, setChannels] = useState<ChannelsData | null>(null);
+  const [credits, setCredits] = useState<number | null>(null);
+
   const [showQR, setShowQR] = useState(false);
+  const [showTelegram, setShowTelegram] = useState(false);
+  const [showDiscord, setShowDiscord] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
+  const [showPurchase, setShowPurchase] = useState(false);
+
   const [restarting, setRestarting] = useState(false);
   const [restartConfirm, setRestartConfirm] = useState(false);
   const [showInstanceInfo, setShowInstanceInfo] = useState(false);
 
+  const aiMode = (instance.metadata?.ai_mode as string | undefined) ?? "byok";
+  const isCreditsMode = aiMode === "credits";
+  const modelLabel = (instance.metadata?.model as string | undefined) ?? (
+    aiMode === "credits" ? "OpenRouter" : aiMode === "chatgpt" ? "ChatGPT Plus" : "Claude"
+  );
+
+  // ── Fetchers ───────────────────────────────────────────────────────────────
   const fetchHealth = useCallback(async () => {
     try {
       const data = await proxyCall("GET", instance.id, "health", token);
       setHealth(data);
-    } catch {
-      setHealth(null);
-    } finally {
-      setHealthLoading(false);
-    }
+    } catch { setHealth(null); }
+    finally { setHealthLoading(false); }
   }, [instance.id, token]);
+
+  const fetchChannels = useCallback(async () => {
+    try {
+      const data = await proxyCall("GET", instance.id, "channels", token);
+      if (!data.error) setChannels(data as ChannelsData);
+    } catch { /* VPS may not have channels endpoint yet */ }
+  }, [instance.id, token]);
+
+  const fetchCredits = useCallback(async () => {
+    if (!isCreditsMode) return;
+    try {
+      const res = await fetch("/api/credits", { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (!data.error) setCredits(data.balance_brl ?? 0);
+    } catch { /* ignore */ }
+  }, [isCreditsMode, token]);
 
   useEffect(() => {
     fetchHealth();
-    const interval = setInterval(fetchHealth, 30_000);
+    fetchChannels();
+    fetchCredits();
+    const interval = setInterval(() => {
+      fetchHealth();
+      fetchChannels();
+    }, 30_000);
     return () => clearInterval(interval);
-  }, [fetchHealth]);
+  }, [fetchHealth, fetchChannels, fetchCredits]);
 
+  // ── Disconnect channel ─────────────────────────────────────────────────────
+  const disconnectChannel = async (ch: string) => {
+    await proxyCall("DELETE", instance.id, `channels/${ch}`, token);
+    setTimeout(fetchChannels, 1000);
+  };
+
+  // ── Restart ────────────────────────────────────────────────────────────────
   const handleRestart = async () => {
     setRestarting(true);
     setRestartConfirm(false);
     try {
       await proxyCall("POST", instance.id, "restart", token);
       setTimeout(fetchHealth, 3000);
-    } catch {
-      // ignore
-    } finally {
-      setRestarting(false);
-    }
+    } catch { /* ignore */ }
+    finally { setRestarting(false); }
   };
 
   const isOnline = health?.openclaw === "running";
@@ -423,118 +1003,168 @@ export default function MainDashboard({ instance, userEmail, token, onLogout }: 
       </nav>
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Painel</h1>
-          <p className="text-slate-400 text-sm mt-1">Gerencie seu assistente de IA</p>
-        </div>
 
-        {/* ── Status cards ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {/* Status card */}
-          <div className="bg-slate-900 rounded-2xl border border-slate-800 p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <Activity className="w-4 h-4 text-slate-400" />
-              <p className="text-slate-400 text-sm">Status</p>
+        {/* ── Status header ── */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Painel</h1>
+            <div className="flex items-center gap-2 mt-1">
+              {healthLoading ? (
+                <Loader2 className="w-3.5 h-3.5 text-violet-400 animate-spin" />
+              ) : (
+                <div className={`w-2 h-2 rounded-full ${isOnline ? "bg-green-400 shadow-sm shadow-green-400" : "bg-red-400"}`} />
+              )}
+              <span className={`text-sm ${isOnline ? "text-green-400" : "text-slate-400"}`}>
+                {healthLoading ? "Verificando..." : isOnline
+                  ? `Assistente online${health?.uptime ? ` · Uptime: ${formatUptime(health.uptime)}` : ""}`
+                  : "Assistente offline"}
+              </span>
             </div>
-            {healthLoading ? (
-              <div className="flex items-center gap-2">
-                <Loader2 className="w-4 h-4 text-violet-400 animate-spin" />
-                <span className="text-slate-400 text-sm">Verificando...</span>
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className={`w-2.5 h-2.5 rounded-full ${isOnline ? "bg-green-400 shadow-sm shadow-green-400" : "bg-red-400"}`} />
-                  <span className={`font-semibold ${isOnline ? "text-green-400" : "text-red-400"}`}>
-                    {isOnline ? "Online" : "Offline"}
-                  </span>
-                </div>
-                {health?.uptime !== undefined && isOnline && (
-                  <p className="text-slate-500 text-xs">Uptime: {formatUptime(health.uptime)}</p>
-                )}
-                {!isOnline && (
-                  <button
-                    onClick={() => setRestartConfirm(true)}
-                    disabled={restarting}
-                    className="mt-2 px-3 py-1.5 rounded-lg bg-violet-600/20 border border-violet-500/30 text-violet-400 text-xs font-medium hover:bg-violet-600/30 transition-all disabled:opacity-50"
-                  >
-                    {restarting ? "Reiniciando..." : "Reiniciar"}
-                  </button>
-                )}
-              </>
-            )}
           </div>
-
-          {/* Canal card */}
-          <div className="bg-slate-900 rounded-2xl border border-slate-800 p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <Wifi className="w-4 h-4 text-slate-400" />
-              <p className="text-slate-400 text-sm">Canal</p>
-            </div>
-            <div className="flex items-center gap-2 mb-3">
-              <CheckCircle className="w-4 h-4 text-green-400" />
-              <span className="text-white font-semibold">WhatsApp</span>
-            </div>
-            <button
-              onClick={() => setShowQR(true)}
-              className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-all"
-            >
-              Reconectar
-            </button>
-          </div>
-
-          {/* Plano card */}
-          <div className="bg-slate-900 rounded-2xl border border-slate-800 p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <CreditCard className="w-4 h-4 text-slate-400" />
-              <p className="text-slate-400 text-sm">Plano</p>
-            </div>
-            <p className="text-violet-400 font-semibold capitalize mb-3">{instance.plan}</p>
-            <button className="px-3 py-1.5 rounded-lg bg-violet-600/20 border border-violet-500/30 text-violet-400 text-xs font-medium hover:bg-violet-600/30 transition-all">
-              Fazer upgrade
-            </button>
-          </div>
-        </div>
-
-        {/* ── Quick actions ── */}
-        <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6">
-          <h2 className="text-white font-semibold mb-4">Ações rápidas</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <button
-              onClick={() => setShowQR(true)}
-              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-all group"
-            >
-              <Wifi className="w-5 h-5 text-violet-400 group-hover:scale-110 transition-transform" />
-              <span className="text-slate-300 text-sm text-center">Reconectar WhatsApp</span>
-            </button>
-
-            <button
-              onClick={() => setShowConfig(true)}
-              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-all group"
-            >
-              <Settings className="w-5 h-5 text-violet-400 group-hover:scale-110 transition-transform" />
-              <span className="text-slate-300 text-sm text-center">Trocar modelo de IA</span>
-            </button>
-
+          <div className="flex gap-2">
             <button
               onClick={() => setShowLogs(true)}
-              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-all group"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm border border-slate-700 transition-colors"
             >
-              <Eye className="w-5 h-5 text-violet-400 group-hover:scale-110 transition-transform" />
-              <span className="text-slate-300 text-sm text-center">Ver logs</span>
+              <Eye className="w-4 h-4" /> Logs
             </button>
-
             <button
               onClick={() => setRestartConfirm(true)}
               disabled={restarting}
-              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-all group disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm border border-slate-700 transition-colors disabled:opacity-50"
             >
-              {restarting ? (
-                <Loader2 className="w-5 h-5 text-violet-400 animate-spin" />
-              ) : (
-                <RotateCcw className="w-5 h-5 text-violet-400 group-hover:scale-110 transition-transform" />
+              {restarting
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <RotateCcw className="w-4 h-4" />}
+              Reiniciar
+            </button>
+          </div>
+        </div>
+
+        {/* ── Main grid: Channels + AI ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+
+          {/* ── Canais Conectados ── */}
+          <div className="lg:col-span-3 bg-slate-900 rounded-2xl border border-slate-800 p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Activity className="w-4 h-4 text-slate-400" />
+              <h2 className="text-white font-semibold">Canais Conectados</h2>
+            </div>
+
+            {channels ? (
+              <div className="grid grid-cols-3 gap-3">
+                <ChannelCard
+                  name="WhatsApp"
+                  icon={MessageCircle}
+                  iconColor="text-green-400"
+                  status={channels.whatsapp.status}
+                  info={channels.whatsapp.phone}
+                  onConfigure={() => setShowQR(true)}
+                  onReconnect={() => setShowQR(true)}
+                  onDisconnect={() => disconnectChannel("whatsapp")}
+                />
+                <ChannelCard
+                  name="Telegram"
+                  icon={Send}
+                  iconColor="text-sky-400"
+                  status={channels.telegram.status}
+                  info={channels.telegram.username}
+                  onConfigure={() => setShowTelegram(true)}
+                  onReconnect={() => setShowTelegram(true)}
+                  onDisconnect={() => disconnectChannel("telegram")}
+                />
+                <ChannelCard
+                  name="Discord"
+                  icon={Hash}
+                  iconColor="text-indigo-400"
+                  status={channels.discord.status}
+                  info={channels.discord.guild}
+                  onConfigure={() => setShowDiscord(true)}
+                  onReconnect={() => setShowDiscord(true)}
+                  onDisconnect={() => disconnectChannel("discord")}
+                />
+              </div>
+            ) : (
+              /* Fallback while channels API is loading or unavailable */
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/50 border border-slate-700">
+                  <MessageCircle className="w-4 h-4 text-green-400" />
+                  <span className="text-white text-sm">WhatsApp</span>
+                  <button
+                    onClick={() => setShowQR(true)}
+                    className="ml-auto px-3 py-1 rounded-lg bg-violet-600/20 border border-violet-500/30 text-violet-400 text-xs hover:bg-violet-600/30 transition-all"
+                  >
+                    Reconectar
+                  </button>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/50 border border-slate-700">
+                  <Send className="w-4 h-4 text-sky-400" />
+                  <span className="text-white text-sm">Telegram</span>
+                  <button
+                    onClick={() => setShowTelegram(true)}
+                    className="ml-auto px-3 py-1 rounded-lg bg-violet-600/20 border border-violet-500/30 text-violet-400 text-xs hover:bg-violet-600/30 transition-all"
+                  >
+                    Configurar
+                  </button>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/50 border border-slate-700">
+                  <Hash className="w-4 h-4 text-indigo-400" />
+                  <span className="text-white text-sm">Discord</span>
+                  <button
+                    onClick={() => setShowDiscord(true)}
+                    className="ml-auto px-3 py-1 rounded-lg bg-violet-600/20 border border-violet-500/30 text-violet-400 text-xs hover:bg-violet-600/30 transition-all"
+                  >
+                    Configurar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── Inteligência Artificial ── */}
+          <div className="lg:col-span-2 bg-slate-900 rounded-2xl border border-slate-800 p-5 flex flex-col">
+            <div className="flex items-center gap-2 mb-4">
+              <Zap className="w-4 h-4 text-slate-400" />
+              <h2 className="text-white font-semibold">Inteligência Artificial</h2>
+            </div>
+
+            <div className="flex-1 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 text-sm">Modo</span>
+                <span className="text-white text-sm font-medium capitalize">
+                  {aiMode === "byok" ? "Chave própria" : aiMode === "credits" ? "Créditos OriClaw" : "ChatGPT Plus"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 text-sm">Modelo</span>
+                <span className="text-white text-sm font-mono">{modelLabel}</span>
+              </div>
+
+              {isCreditsMode && (
+                <div className="p-3 rounded-xl bg-violet-600/10 border border-violet-500/20">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-slate-400 text-xs">Créditos restantes</span>
+                    <span className="text-violet-300 font-semibold text-sm">
+                      {credits !== null
+                        ? `R$ ${credits.toFixed(2).replace(".", ",")}`
+                        : <Loader2 className="w-3.5 h-3.5 animate-spin text-violet-400" />}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setShowPurchase(true)}
+                    className="w-full py-1.5 rounded-lg bg-violet-600/20 border border-violet-500/30 text-violet-400 text-xs font-medium hover:bg-violet-600/30 transition-all"
+                  >
+                    💳 Comprar mais créditos
+                  </button>
+                </div>
               )}
-              <span className="text-slate-300 text-sm text-center">Reiniciar assistente</span>
+            </div>
+
+            <button
+              onClick={() => setShowConfig(true)}
+              className="mt-4 w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-sm flex items-center justify-center gap-2 transition-colors"
+            >
+              <Settings className="w-4 h-4" /> Trocar modelo / chave
             </button>
           </div>
         </div>
@@ -549,11 +1179,7 @@ export default function MainDashboard({ instance, userEmail, token, onLogout }: 
               <Server className="w-4 h-4 text-slate-400" />
               <h2 className="text-white font-semibold">Informações da instância</h2>
             </div>
-            {showInstanceInfo ? (
-              <ChevronUp className="w-4 h-4 text-slate-400" />
-            ) : (
-              <ChevronDown className="w-4 h-4 text-slate-400" />
-            )}
+            {showInstanceInfo ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
           </button>
 
           {showInstanceInfo && (
@@ -595,16 +1221,10 @@ export default function MainDashboard({ instance, userEmail, token, onLogout }: 
               O assistente ficará indisponível por alguns segundos enquanto reinicia.
             </p>
             <div className="flex gap-3">
-              <button
-                onClick={() => setRestartConfirm(false)}
-                className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium transition-all"
-              >
+              <button onClick={() => setRestartConfirm(false)} className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium transition-all">
                 Cancelar
               </button>
-              <button
-                onClick={handleRestart}
-                className="flex-1 py-2.5 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400 hover:bg-amber-500/30 font-medium transition-all"
-              >
+              <button onClick={handleRestart} className="flex-1 py-2.5 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400 hover:bg-amber-500/30 font-medium transition-all">
                 Reiniciar
               </button>
             </div>
@@ -614,7 +1234,23 @@ export default function MainDashboard({ instance, userEmail, token, onLogout }: 
 
       {/* ── Modals ── */}
       {showQR && (
-        <QRModal instanceId={instance.id} token={token} onClose={() => setShowQR(false)} />
+        <QRModal instanceId={instance.id} token={token} onClose={() => { setShowQR(false); fetchChannels(); }} />
+      )}
+      {showTelegram && (
+        <TelegramModal
+          instanceId={instance.id}
+          token={token}
+          onClose={() => setShowTelegram(false)}
+          onConnected={fetchChannels}
+        />
+      )}
+      {showDiscord && (
+        <DiscordModal
+          instanceId={instance.id}
+          token={token}
+          onClose={() => setShowDiscord(false)}
+          onConnected={fetchChannels}
+        />
       )}
       {showLogs && (
         <LogDrawer instanceId={instance.id} token={token} onClose={() => setShowLogs(false)} />
@@ -623,8 +1259,16 @@ export default function MainDashboard({ instance, userEmail, token, onLogout }: 
         <ConfigModal
           instanceId={instance.id}
           token={token}
+          currentAiMode={aiMode}
           onClose={() => setShowConfig(false)}
           onSaved={fetchHealth}
+        />
+      )}
+      {showPurchase && (
+        <PurchaseModal
+          token={token}
+          onClose={() => setShowPurchase(false)}
+          onPurchased={(amount) => setCredits((c) => (c ?? 0) + amount)}
         />
       )}
     </>
