@@ -66,7 +66,7 @@ function CheckoutContent() {
         return;
       }
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/checkout/session`, {
+      const res = await fetch(`/api/checkout/session`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plan: planSlug, email: user.email, supabase_user_id: user.id }),

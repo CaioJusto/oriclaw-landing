@@ -387,12 +387,16 @@ function DiscordModal({
 
   const handleConnect = async () => {
     if (!botToken.trim()) return;
+    if (!guildId?.trim()) {
+      setError('ID do servidor (Guild ID) é obrigatório.');
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       const result = await proxyCall("POST", instanceId, "channels/discord", token, {
         token: botToken.trim(),
-        guild_id: guildId.trim() || undefined,
+        guild_id: guildId.trim(),
       });
       if (result.error) throw new Error(result.error);
       setSuccess(true);
@@ -440,14 +444,14 @@ function DiscordModal({
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">
-              ID do Servidor{" "}
-              <span className="text-slate-500 font-normal">(opcional)</span>
+              ID do Servidor
             </label>
             <input
               type="text"
               value={guildId}
               onChange={(e) => setGuildId(e.target.value)}
               placeholder="1234567890123456789"
+              required
               className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm transition-colors"
             />
             <p className="text-slate-500 text-xs mt-1">
@@ -594,7 +598,7 @@ function PurchaseModal({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/credits/purchase", {
+      const res = await fetch("/api/credits", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ amount_brl: selected }),
