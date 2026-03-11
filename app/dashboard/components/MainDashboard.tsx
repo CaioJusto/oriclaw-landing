@@ -59,7 +59,7 @@ interface ChatUrlData {
   available: boolean;
 }
 
-type ChannelStatus = "connected" | "disconnected" | "not_configured";
+type ChannelStatus = "connected" | "disconnected" | "not_configured" | "configured";
 
 interface ChannelsData {
   whatsapp: { status: ChannelStatus; phone: string | null };
@@ -114,6 +114,14 @@ function StatusBadge({ status }: { status: ChannelStatus }) {
       </span>
     );
   }
+  if (status === "configured") {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-400">
+        <span className="w-1.5 h-1.5 rounded-full bg-orange-400" />
+        Configurado (verificar)
+      </span>
+    );
+  }
   if (status === "disconnected") {
     return (
       <span className="inline-flex items-center gap-1 text-xs font-medium text-red-400">
@@ -131,6 +139,8 @@ function StatusBadge({ status }: { status: ChannelStatus }) {
 }
 
 // ── QR Modal (WhatsApp) ────────────────────────────────────────────────────────
+const MAX_QR_ATTEMPTS_DASHBOARD = 60; // 60 × 3s = 3 minutes
+
 function QRModal({
   instanceId,
   token,
@@ -143,14 +153,31 @@ function QRModal({
   const [qr, setQr] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [timedOut, setTimedOut] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const qrDashboardAttemptsRef = useRef(0);
+
+  const stopPolling = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, []);
 
   const fetchQR = useCallback(async () => {
+    qrDashboardAttemptsRef.current += 1;
+
+    if (qrDashboardAttemptsRef.current > MAX_QR_ATTEMPTS_DASHBOARD) {
+      stopPolling();
+      setTimedOut(true);
+      return;
+    }
+
     try {
       const data = await proxyCall("GET", instanceId, "qr", token);
       if (data.connected) {
         setConnected(true);
-        if (intervalRef.current) clearInterval(intervalRef.current);
+        stopPolling();
       } else if (data.qr) {
         setQr(data.qr);
         setError(null);
@@ -160,13 +187,21 @@ function QRModal({
     } catch {
       setError("Erro ao buscar QR code");
     }
-  }, [instanceId, token]);
+  }, [instanceId, token, stopPolling]);
+
+  const retryPolling = useCallback(() => {
+    qrDashboardAttemptsRef.current = 0;
+    setTimedOut(false);
+    setError(null);
+    fetchQR();
+    intervalRef.current = setInterval(fetchQR, 3000);
+  }, [fetchQR]);
 
   useEffect(() => {
     fetchQR();
     intervalRef.current = setInterval(fetchQR, 3000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [fetchQR]);
+    return () => stopPolling();
+  }, [fetchQR, stopPolling]);
 
   useEffect(() => {
     if (connected) {
@@ -201,6 +236,14 @@ function QRModal({
               <CheckCircle className="w-14 h-14 text-green-400" />
               <p className="text-green-400 font-semibold">✅ Conectado!</p>
             </div>
+          ) : timedOut ? (
+            <div className="w-56 rounded-2xl bg-red-500/10 border border-red-500/30 flex flex-col items-center justify-center gap-2 px-4 py-6">
+              <AlertCircle className="w-10 h-10 text-red-400" />
+              <p className="text-red-400 text-sm text-center">Não foi possível carregar o QR Code. Tente novamente.</p>
+              <button onClick={retryPolling} className="mt-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium transition-all">
+                Tentar novamente
+              </button>
+            </div>
           ) : qr ? (
             <div className="p-2 bg-white rounded-xl">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -210,7 +253,7 @@ function QRModal({
             <div className="w-56 h-56 rounded-2xl bg-slate-800 border border-slate-700 flex flex-col items-center justify-center gap-2 px-4">
               <AlertCircle className="w-10 h-10 text-slate-500" />
               <p className="text-slate-400 text-sm text-center">{error}</p>
-              <button onClick={fetchQR} className="text-violet-400 text-sm hover:text-violet-300">
+              <button onClick={retryPolling} className="text-violet-400 text-sm hover:text-violet-300">
                 Tentar novamente
               </button>
             </div>
@@ -1070,7 +1113,7 @@ function ChannelCard({
       )}
 
       <div className="mt-auto">
-        {status === "connected" ? (
+        {(status === "connected" || status === "configured") ? (
           <button
             onClick={onDisconnect}
             className="w-full py-1.5 rounded-lg border border-red-500/40 text-red-400 text-xs font-medium hover:bg-red-500/10 transition-all flex items-center justify-center gap-1"

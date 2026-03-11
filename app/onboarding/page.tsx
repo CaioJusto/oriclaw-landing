@@ -401,6 +401,13 @@ export default function OnboardingPage() {
   const [isProvisioning, setIsProvisioning] = useState(false);
   const provisioningPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Persist step in localStorage when instance is known
+  useEffect(() => {
+    if (instance?.id) {
+      localStorage.setItem(`oriclaw_onboarding_step_${instance.id}`, String(step));
+    }
+  }, [step, instance?.id]);
+
   // Telegram/Discord channel config state
   const [telegramToken, setTelegramToken] = useState('');
   const [telegramConfigured, setTelegramConfigured] = useState(false);
@@ -429,6 +436,12 @@ export default function OnboardingPage() {
           setInstance(inst);
           if (inst.status === "running") { router.push("/dashboard"); return; }
           if (inst.metadata?.chatgpt_connected) setChatgptConnected(true);
+
+          // Restore saved onboarding step
+          if (inst.id) {
+            const savedStep = parseInt(localStorage.getItem(`oriclaw_onboarding_step_${inst.id}`) || '0', 10);
+            if (savedStep > 0 && savedStep < 4) setStep(savedStep);
+          }
 
           if (inst.status === "provisioning") {
             setIsProvisioning(true);
@@ -1216,7 +1229,10 @@ export default function OnboardingPage() {
             </div>
 
             <button
-              onClick={() => router.push("/dashboard")}
+              onClick={() => {
+                if (instance?.id) localStorage.removeItem(`oriclaw_onboarding_step_${instance.id}`);
+                router.push("/dashboard");
+              }}
               className="w-full py-4 px-6 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-lg flex items-center justify-center gap-2 transition-all shadow-lg shadow-violet-600/20"
             >
               Ir para o painel <ChevronRight className="w-6 h-6" />
