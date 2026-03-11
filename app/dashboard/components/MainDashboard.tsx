@@ -42,6 +42,23 @@ interface HealthData {
   uptime: number;
 }
 
+interface DetailedHealthData {
+  openclaw: "running" | "stopped" | "crashed";
+  uptime_seconds: number;
+  cpu_percent: number;
+  ram_used_mb: number;
+  ram_total_mb: number;
+  disk_used_gb: number;
+  disk_total_gb: number;
+  last_message_at: string | null;
+  restart_count: number;
+}
+
+interface ChatUrlData {
+  url: string;
+  available: boolean;
+}
+
 type ChannelStatus = "connected" | "disconnected" | "not_configured";
 
 interface ChannelsData {
@@ -647,6 +664,184 @@ function LogDrawer({ instanceId, token, onClose }: { instanceId: string; token: 
   );
 }
 
+// ── Health Metric Card ────────────────────────────────────────────────────────
+function MetricCard({ label, value, sub, color }: { label: string; value: string; sub?: string; color: "green" | "yellow" | "red" | "slate" }) {
+  const colors = {
+    green: "bg-green-500/10 border-green-500/30 text-green-400",
+    yellow: "bg-yellow-500/10 border-yellow-500/30 text-yellow-400",
+    red: "bg-red-500/10 border-red-500/30 text-red-400",
+    slate: "bg-slate-800/60 border-slate-700 text-slate-300",
+  };
+  return (
+    <div className={`rounded-xl border p-3 flex flex-col gap-1 ${colors[color]}`}>
+      <span className="text-xs text-slate-500">{label}</span>
+      <span className="text-lg font-bold">{value}</span>
+      {sub && <span className="text-xs text-slate-500">{sub}</span>}
+    </div>
+  );
+}
+
+function getMetricColor(value: number, warn = 70, crit = 90): "green" | "yellow" | "red" {
+  if (value >= crit) return "red";
+  if (value >= warn) return "yellow";
+  return "green";
+}
+
+// ── Persona Config Modal ──────────────────────────────────────────────────────
+function PersonaModal({
+  instanceId,
+  token,
+  onClose,
+}: {
+  instanceId: string;
+  token: string;
+  onClose: () => void;
+}) {
+  const [tab, setTab] = useState<"personalidade" | "idioma" | "fuso">("personalidade");
+  const [systemPrompt, setSystemPrompt] = useState("");
+  const [language, setLanguage] = useState("pt-BR");
+  const [timezone, setTimezone] = useState("America/Sao_Paulo");
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSave = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const body: Record<string, unknown> = {};
+      if (tab === "personalidade" && systemPrompt) body.system_prompt = systemPrompt;
+      if (tab === "idioma") body.language = language;
+      if (tab === "fuso") body.timezone = timezone;
+
+      const result = await proxyCall("POST", instanceId, "configure", token, body);
+      if (result.error) throw new Error(result.error);
+      setSuccess(true);
+      setTimeout(() => onClose(), 1500);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Erro ao salvar");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const tabs = [
+    { id: "personalidade" as const, label: "Personalidade" },
+    { id: "idioma" as const, label: "Idioma" },
+    { id: "fuso" as const, label: "Fuso horário" },
+  ];
+
+  const languages = [
+    { value: "pt-BR", label: "Português (BR)" },
+    { value: "en", label: "English" },
+    { value: "es", label: "Español" },
+  ];
+
+  const timezones = [
+    { value: "America/Sao_Paulo", label: "Brasília (UTC-3)" },
+    { value: "America/Manaus", label: "Manaus (UTC-4)" },
+    { value: "America/Belem", label: "Belém (UTC-3)" },
+    { value: "America/Fortaleza", label: "Fortaleza (UTC-3)" },
+    { value: "America/Recife", label: "Recife (UTC-3)" },
+    { value: "America/Bahia", label: "Salvador (UTC-3)" },
+    { value: "America/Cuiaba", label: "Cuiabá (UTC-4)" },
+    { value: "America/Porto_Velho", label: "Porto Velho (UTC-4)" },
+    { value: "America/Rio_Branco", label: "Rio Branco (UTC-5)" },
+    { value: "America/Noronha", label: "Fernando de Noronha (UTC-2)" },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-md">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-white font-semibold text-lg">⚙️ Configurar Assistente</h3>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="flex gap-1 p-1 bg-slate-800 rounded-xl mb-5">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => { setTab(t.id); setError(null); setSuccess(false); }}
+              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${tab === t.id ? "bg-slate-700 text-white" : "text-slate-400 hover:text-slate-300"}`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="space-y-4">
+          {tab === "personalidade" && (
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Personalidade / Prompt do sistema
+              </label>
+              <textarea
+                value={systemPrompt}
+                onChange={(e) => setSystemPrompt(e.target.value)}
+                rows={6}
+                placeholder="Você é Ori, um assistente amigável e direto. Responda sempre em português..."
+                className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-violet-600 text-sm resize-none"
+              />
+              <p className="text-slate-500 text-xs mt-1">
+                Define a personalidade e comportamento do seu assistente.
+              </p>
+            </div>
+          )}
+
+          {tab === "idioma" && (
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Idioma padrão</label>
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-violet-600 text-sm"
+              >
+                {languages.map((l) => (
+                  <option key={l.value} value={l.value}>{l.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {tab === "fuso" && (
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Fuso horário</label>
+              <select
+                value={timezone}
+                onChange={(e) => setTimezone(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-violet-600 text-sm"
+              >
+                {timezones.map((tz) => (
+                  <option key={tz.value} value={tz.value}>{tz.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
+        {error && (
+          <div className="flex items-center gap-2 p-3 mt-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />{error}
+          </div>
+        )}
+
+        <button
+          onClick={handleSave}
+          disabled={loading || success}
+          className="w-full mt-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-60 text-white font-semibold flex items-center justify-center gap-2 transition-all"
+        >
+          {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</>
+            : success ? <><CheckCircle className="w-4 h-4" /> Salvo!</>
+            : "Salvar"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Config Modal ──────────────────────────────────────────────────────────────
 function ConfigModal({
   instanceId,
@@ -903,6 +1098,9 @@ function ChannelCard({
 export default function MainDashboard({ instance, userEmail, token, onLogout }: Props) {
   const [health, setHealth] = useState<HealthData | null>(null);
   const [healthLoading, setHealthLoading] = useState(true);
+  const [detailedHealth, setDetailedHealth] = useState<DetailedHealthData | null>(null);
+  const [chatUrlData, setChatUrlData] = useState<ChatUrlData | null>(null);
+  const [chatEmbedOpen, setChatEmbedOpen] = useState(false);
   const [channels, setChannels] = useState<ChannelsData | null>(null);
   const [credits, setCredits] = useState<number | null>(null);
 
@@ -911,10 +1109,12 @@ export default function MainDashboard({ instance, userEmail, token, onLogout }: 
   const [showDiscord, setShowDiscord] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
+  const [showPersona, setShowPersona] = useState(false);
   const [showPurchase, setShowPurchase] = useState(false);
 
   const [restarting, setRestarting] = useState(false);
   const [restartConfirm, setRestartConfirm] = useState(false);
+  const [restartStatus, setRestartStatus] = useState<"idle" | "restarting" | "success" | "failed">("idle");
   const [showInstanceInfo, setShowInstanceInfo] = useState(false);
 
   const aiMode = (instance.metadata?.ai_mode as string | undefined) ?? "byok";
@@ -930,6 +1130,20 @@ export default function MainDashboard({ instance, userEmail, token, onLogout }: 
       setHealth(data);
     } catch { setHealth(null); }
     finally { setHealthLoading(false); }
+  }, [instance.id, token]);
+
+  const fetchDetailedHealth = useCallback(async () => {
+    try {
+      const data = await proxyCall("GET", instance.id, "health/detailed", token);
+      if (!data.error) setDetailedHealth(data as DetailedHealthData);
+    } catch { /* ignore */ }
+  }, [instance.id, token]);
+
+  const fetchChatUrl = useCallback(async () => {
+    try {
+      const data = await proxyCall("GET", instance.id, "chat-url", token);
+      if (!data.error) setChatUrlData(data as ChatUrlData);
+    } catch { /* ignore */ }
   }, [instance.id, token]);
 
   const fetchChannels = useCallback(async () => {
@@ -950,14 +1164,17 @@ export default function MainDashboard({ instance, userEmail, token, onLogout }: 
 
   useEffect(() => {
     fetchHealth();
+    fetchDetailedHealth();
+    fetchChatUrl();
     fetchChannels();
     fetchCredits();
     const interval = setInterval(() => {
       fetchHealth();
+      fetchDetailedHealth();
       fetchChannels();
     }, 30_000);
     return () => clearInterval(interval);
-  }, [fetchHealth, fetchChannels, fetchCredits]);
+  }, [fetchHealth, fetchDetailedHealth, fetchChatUrl, fetchChannels, fetchCredits]);
 
   // ── Disconnect channel ─────────────────────────────────────────────────────
   const disconnectChannel = async (ch: string) => {
@@ -969,11 +1186,40 @@ export default function MainDashboard({ instance, userEmail, token, onLogout }: 
   const handleRestart = async () => {
     setRestarting(true);
     setRestartConfirm(false);
+    setRestartStatus("restarting");
     try {
-      await proxyCall("POST", instance.id, "restart", token);
-      setTimeout(fetchHealth, 3000);
-    } catch { /* ignore */ }
-    finally { setRestarting(false); }
+      const result = await proxyCall("POST", instance.id, "restart", token);
+      if (result.error) throw new Error(result.error);
+
+      // Poll health every 2s for up to 30s
+      let attempts = 0;
+      const maxAttempts = 15;
+      const poll = setInterval(async () => {
+        attempts++;
+        try {
+          const h = await proxyCall("GET", instance.id, "health", token);
+          if (h.openclaw === "running") {
+            clearInterval(poll);
+            setHealth(h);
+            setRestartStatus("success");
+            setRestarting(false);
+            setTimeout(() => setRestartStatus("idle"), 4000);
+            fetchDetailedHealth();
+            return;
+          }
+        } catch { /* keep polling */ }
+        if (attempts >= maxAttempts) {
+          clearInterval(poll);
+          setRestartStatus("failed");
+          setRestarting(false);
+          setTimeout(() => setRestartStatus("idle"), 6000);
+        }
+      }, 2000);
+    } catch {
+      setRestartStatus("failed");
+      setRestarting(false);
+      setTimeout(() => setRestartStatus("idle"), 6000);
+    }
   };
 
   const isOnline = health?.openclaw === "running";
@@ -1023,6 +1269,12 @@ export default function MainDashboard({ instance, userEmail, token, onLogout }: 
           </div>
           <div className="flex gap-2">
             <button
+              onClick={() => setShowPersona(true)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm border border-slate-700 transition-colors"
+            >
+              <Settings className="w-4 h-4" /> Configurar
+            </button>
+            <button
               onClick={() => setShowLogs(true)}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm border border-slate-700 transition-colors"
             >
@@ -1036,10 +1288,30 @@ export default function MainDashboard({ instance, userEmail, token, onLogout }: 
               {restarting
                 ? <Loader2 className="w-4 h-4 animate-spin" />
                 : <RotateCcw className="w-4 h-4" />}
-              Reiniciar
+              {restarting ? "Reiniciando..." : "Reiniciar"}
             </button>
           </div>
         </div>
+
+        {/* ── Restart toast ── */}
+        {restartStatus === "success" && (
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-green-500/10 border border-green-500/30 text-green-400">
+            <CheckCircle className="w-5 h-5 flex-shrink-0" />
+            <span className="font-medium">✅ Assistente online!</span>
+          </div>
+        )}
+        {restartStatus === "failed" && (
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400">
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <span className="font-medium">❌ Falha ao reiniciar. Entre em contato com o suporte.</span>
+          </div>
+        )}
+        {restartStatus === "restarting" && (
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
+            <Loader2 className="w-5 h-5 flex-shrink-0 animate-spin" />
+            <span className="font-medium">Reiniciando... aguarde alguns segundos.</span>
+          </div>
+        )}
 
         {/* ── Main grid: Channels + AI ── */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
@@ -1169,6 +1441,134 @@ export default function MainDashboard({ instance, userEmail, token, onLogout }: 
           </div>
         </div>
 
+        {/* ── Saúde da Instância ── */}
+        <div className="bg-slate-900 rounded-2xl border border-slate-800 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Activity className="w-4 h-4 text-slate-400" />
+              <h2 className="text-white font-semibold">Saúde da Instância</h2>
+            </div>
+            {detailedHealth && (
+              <div className="flex items-center gap-2">
+                {detailedHealth.openclaw === "running" ? (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-400 bg-green-500/10 border border-green-500/30 px-2 py-1 rounded-full">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400" /> 🟢 Rodando
+                  </span>
+                ) : detailedHealth.openclaw === "crashed" || detailedHealth.restart_count > 3 ? (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-yellow-400 bg-yellow-500/10 border border-yellow-500/30 px-2 py-1 rounded-full">
+                    ⚠️ Travado
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-red-400 bg-red-500/10 border border-red-500/30 px-2 py-1 rounded-full">
+                    🔴 Parado
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Crash/stuck warning banner */}
+          {detailedHealth && (detailedHealth.openclaw === "crashed" || detailedHealth.restart_count > 3) && (
+            <div className="flex items-center justify-between p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/30 mb-4">
+              <div className="flex items-center gap-2 text-yellow-400 text-sm">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>Seu assistente pode estar com problemas ({detailedHealth.restart_count} reinicializações)</span>
+              </div>
+              <button
+                onClick={() => setRestartConfirm(true)}
+                disabled={restarting}
+                className="px-3 py-1.5 rounded-lg bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 text-xs font-medium hover:bg-yellow-500/30 transition-all flex-shrink-0 ml-3"
+              >
+                Reiniciar agora
+              </button>
+            </div>
+          )}
+
+          {detailedHealth ? (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <MetricCard
+                label="CPU"
+                value={`${detailedHealth.cpu_percent}%`}
+                color={getMetricColor(detailedHealth.cpu_percent)}
+              />
+              <MetricCard
+                label="RAM"
+                value={`${detailedHealth.ram_used_mb} MB`}
+                sub={`de ${detailedHealth.ram_total_mb} MB`}
+                color={getMetricColor(detailedHealth.ram_total_mb > 0 ? (detailedHealth.ram_used_mb / detailedHealth.ram_total_mb) * 100 : 0)}
+              />
+              <MetricCard
+                label="Disco"
+                value={`${detailedHealth.disk_used_gb.toFixed(1)} GB`}
+                sub={`de ${detailedHealth.disk_total_gb.toFixed(1)} GB`}
+                color={getMetricColor(detailedHealth.disk_total_gb > 0 ? (detailedHealth.disk_used_gb / detailedHealth.disk_total_gb) * 100 : 0)}
+              />
+              <MetricCard
+                label="Uptime"
+                value={formatUptime(detailedHealth.uptime_seconds)}
+                sub={`${detailedHealth.restart_count} reinic.`}
+                color={detailedHealth.restart_count > 3 ? "yellow" : "slate"}
+              />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {["CPU", "RAM", "Disco", "Uptime"].map((l) => (
+                <div key={l} className="rounded-xl border border-slate-700 bg-slate-800/50 p-3 animate-pulse">
+                  <div className="h-3 w-10 bg-slate-700 rounded mb-2" />
+                  <div className="h-5 w-16 bg-slate-700 rounded" />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── Chat Direto ── */}
+        <div className="bg-slate-900 rounded-2xl border border-slate-800 p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <MessageCircle className="w-4 h-4 text-slate-400" />
+            <h2 className="text-white font-semibold">💬 Chat com seu assistente</h2>
+          </div>
+
+          {chatUrlData?.available ? (
+            <div className="space-y-4">
+              <p className="text-slate-400 text-sm">
+                Converse diretamente com o Ori pelo navegador, sem WhatsApp.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <a
+                  href={chatUrlData.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-all"
+                >
+                  <ExternalLink className="w-4 h-4" /> Abrir chat →
+                </a>
+                <button
+                  onClick={() => setChatEmbedOpen((v) => !v)}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-sm font-medium transition-all"
+                >
+                  {chatEmbedOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  {chatEmbedOpen ? "▲ Fechar" : "▼ Abrir aqui"}
+                </button>
+              </div>
+              {chatEmbedOpen && (
+                <div className="rounded-xl overflow-hidden border border-slate-700">
+                  <iframe
+                    src={chatUrlData.url}
+                    className="w-full h-[600px]"
+                    title="OpenClaw Chat"
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-slate-800/50 border border-slate-700 text-slate-400 text-sm">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              Interface de chat não disponível. Inicie o assistente primeiro.
+            </div>
+          )}
+        </div>
+
         {/* ── Instance info ── */}
         <div className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
           <button
@@ -1215,10 +1615,10 @@ export default function MainDashboard({ instance, userEmail, token, onLogout }: 
           <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 w-full max-w-sm">
             <div className="flex items-center gap-3 mb-4">
               <RotateCcw className="w-5 h-5 text-amber-400" />
-              <h3 className="text-white font-semibold">Reiniciar assistente?</h3>
+              <h3 className="text-white font-semibold">Reiniciar o assistente?</h3>
             </div>
             <p className="text-slate-400 text-sm mb-6">
-              O assistente ficará indisponível por alguns segundos enquanto reinicia.
+              Ele ficará offline por ~10 segundos enquanto reinicia.
             </p>
             <div className="flex gap-3">
               <button onClick={() => setRestartConfirm(false)} className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium transition-all">
@@ -1262,6 +1662,13 @@ export default function MainDashboard({ instance, userEmail, token, onLogout }: 
           currentAiMode={aiMode}
           onClose={() => setShowConfig(false)}
           onSaved={fetchHealth}
+        />
+      )}
+      {showPersona && (
+        <PersonaModal
+          instanceId={instance.id}
+          token={token}
+          onClose={() => setShowPersona(false)}
         />
       )}
       {showPurchase && (
