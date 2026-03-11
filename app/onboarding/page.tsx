@@ -399,6 +399,7 @@ export default function OnboardingPage() {
   const [instance, setInstance] = useState<Instance | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isProvisioning, setIsProvisioning] = useState(false);
+  const [provisioningError, setProvisioningError] = useState<string | null>(null);
   const provisioningPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Persist step in localStorage when instance is known
@@ -460,6 +461,14 @@ export default function OnboardingPage() {
                   setInstance(updated);
                   if (updated.status !== "provisioning") {
                     if (provisioningPollRef.current) clearInterval(provisioningPollRef.current);
+                    if (updated.status === 'suspended' || updated.status === 'deletion_failed') {
+                      setIsProvisioning(false);
+                      setProvisioningError(
+                        (updated.metadata as { error?: string })?.error ||
+                        'Falha ao criar seu servidor. Entre em contato com o suporte em suporte@oriclaw.com.br'
+                      );
+                      return;
+                    }
                     setIsProvisioning(false);
                     if (updated.status === "running") router.push("/dashboard");
                   }
@@ -634,29 +643,42 @@ export default function OnboardingPage() {
         {/* ── Provisioning wait screen ── */}
         {isProvisioning && (
           <div className="animate-fade-in text-center py-8">
-            <h1 className="text-3xl font-bold text-white mb-3">Preparando seu servidor...</h1>
-            <p className="text-slate-400 mb-8">Isso pode levar até 20 minutos na primeira vez</p>
-            {/* Animated progress bar */}
-            <div className="w-full bg-slate-800 rounded-full h-2 mb-6 overflow-hidden">
-              <div
-                className="h-2 rounded-full bg-violet-500"
-                style={{
-                  animation: "provisioningProgress 900s linear forwards",
-                  width: "0%",
-                }}
-              />
-            </div>
-            <style>{`
-              @keyframes provisioningProgress {
-                from { width: 0%; }
-                to { width: 95%; }
-              }
-            `}</style>
-            <p className="text-slate-500 text-lg">☕ Aproveite para preparar um café</p>
-            <div className="flex items-center justify-center gap-2 mt-8 text-slate-500 text-sm">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Verificando a cada 8 segundos...</span>
-            </div>
+            {provisioningError ? (
+              <div className="text-center space-y-4">
+                <AlertCircle className="w-12 h-12 text-red-400 mx-auto" />
+                <h2 className="text-xl font-bold text-white">Falha no provisionamento</h2>
+                <p className="text-gray-400">{provisioningError}</p>
+                <a href="mailto:suporte@oriclaw.com.br" className="text-violet-400 underline">
+                  Falar com suporte
+                </a>
+              </div>
+            ) : (
+              <>
+                <h1 className="text-3xl font-bold text-white mb-3">Preparando seu servidor...</h1>
+                <p className="text-slate-400 mb-8">Isso pode levar até 20 minutos na primeira vez</p>
+                {/* Animated progress bar */}
+                <div className="w-full bg-slate-800 rounded-full h-2 mb-6 overflow-hidden">
+                  <div
+                    className="h-2 rounded-full bg-violet-500"
+                    style={{
+                      animation: "provisioningProgress 900s linear forwards",
+                      width: "0%",
+                    }}
+                  />
+                </div>
+                <style>{`
+                  @keyframes provisioningProgress {
+                    from { width: 0%; }
+                    to { width: 95%; }
+                  }
+                `}</style>
+                <p className="text-slate-500 text-lg">☕ Aproveite para preparar um café</p>
+                <div className="flex items-center justify-center gap-2 mt-8 text-slate-500 text-sm">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Verificando a cada 8 segundos...</span>
+                </div>
+              </>
+            )}
           </div>
         )}
 

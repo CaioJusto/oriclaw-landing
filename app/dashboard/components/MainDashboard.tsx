@@ -1012,6 +1012,9 @@ function ConfigModal({
                   placeholder={provider === "anthropic" ? "sk-ant-..." : "sk-..."}
                   className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-violet-600 text-sm"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Por segurança, sua chave atual não é exibida. Insira uma nova chave para substituir.
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">Modelo</label>
