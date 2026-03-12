@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { Loader2, Server, Clock, AlertTriangle, AlertCircle, Settings } from "lucide-react";
+import { Loader2, Server, Clock, AlertTriangle, Settings } from "lucide-react";
 import dynamic from "next/dynamic";
 
 const MainDashboard = dynamic(() => import("./components/MainDashboard"), { ssr: false });
@@ -222,7 +222,7 @@ async function fetchInstanceWithRetry(userId: string, token: string, maxRetries 
       if (res.status === 404) return null; // genuinamente sem instância
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return await res.json();
-    } catch (err) {
+    } catch {
       if (i === maxRetries - 1) return null; // última tentativa falhou
       await new Promise(r => setTimeout(r, 1000 * (i + 1))); // backoff 1s, 2s
     }
@@ -231,7 +231,8 @@ async function fetchInstanceWithRetry(userId: string, token: string, maxRetries 
 }
 
 // ── Dashboard Page (router) ───────────────────────────────────────────────────
-export default function DashboardPage() {
+// Wrapped in Suspense because useSearchParams() requires it in Next.js 14 App Router
+function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
@@ -530,4 +531,18 @@ export default function DashboardPage() {
 
   // Fallback
   return <ProvisioningScreen />;
+}
+
+export default function DashboardPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <main className="min-h-screen bg-slate-950 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
+        </main>
+      }
+    >
+      <DashboardContent />
+    </React.Suspense>
+  );
 }

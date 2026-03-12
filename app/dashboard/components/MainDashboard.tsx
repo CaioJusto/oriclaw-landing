@@ -21,7 +21,7 @@ import {
   Hash,
   Zap,
   Key,
-  ExternalLink,
+
   Trash2,
 } from "lucide-react";
 import Link from "next/link";

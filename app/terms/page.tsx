@@ -58,7 +58,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-semibold text-white mb-3">5. Limitação de Responsabilidade</h2>
             <p>
-              O OriClaw é fornecido "como está", sem garantias de disponibilidade contínua. Não nos
+              O OriClaw é fornecido &ldquo;como está&rdquo;, sem garantias de disponibilidade contínua. Não nos
               responsabilizamos por danos indiretos, lucros cessantes ou perda de dados decorrentes
               do uso ou impossibilidade de uso do serviço.
             </p>
