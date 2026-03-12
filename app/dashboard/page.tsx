@@ -473,6 +473,7 @@ export default function DashboardPage() {
               userEmail={userEmail ?? ""}
               token={token ?? ""}
               onLogout={handleLogout}
+              onBillingPortal={handleBillingPortal}
             />
           </ErrorBoundary>
         </main>
@@ -491,6 +492,7 @@ export default function DashboardPage() {
               userEmail={userEmail ?? ""}
               token={token ?? ""}
               onLogout={handleLogout}
+              onBillingPortal={handleBillingPortal}
             />
           </ErrorBoundary>
         </main>

@@ -72,6 +72,7 @@ interface Props {
   userEmail: string;
   token: string;
   onLogout: () => void;
+  onBillingPortal?: () => void;
 }
 
 // ── API helper ────────────────────────────────────────────────────────────────
@@ -1171,7 +1172,7 @@ function ChannelCard({
 }
 
 // ── Main Dashboard ────────────────────────────────────────────────────────────
-export default function MainDashboard({ instance, userEmail, token, onLogout }: Props) {
+export default function MainDashboard({ instance, userEmail, token, onLogout, onBillingPortal }: Props) {
   const [health, setHealth] = useState<HealthData | null>(null);
   const [healthLoading, setHealthLoading] = useState(true);
   const [detailedHealth, setDetailedHealth] = useState<DetailedHealthData | null>(null);
@@ -1278,7 +1279,9 @@ export default function MainDashboard({ instance, userEmail, token, onLogout }: 
       }
 
       if (failureCountRef.current >= 3) {
+        // Increase interval and show banner after 3+ consecutive failures
         pollIntervalMsRef.current = 60_000;
+        setPollingPaused(true);
       }
     }
 
@@ -1289,7 +1292,7 @@ export default function MainDashboard({ instance, userEmail, token, onLogout }: 
     pollingStoppedRef.current = false;
     failureCountRef.current = 0;
     pollIntervalMsRef.current = 30_000;
-    setPollingPaused(false);
+    setPollingPaused(false); // hide the banner immediately on manual retry
     clearPollingTimer();
     runHealthPollingCycle();
   }, [clearPollingTimer, runHealthPollingCycle]);
@@ -1364,8 +1367,18 @@ export default function MainDashboard({ instance, userEmail, token, onLogout }: 
             </div>
             <span className="text-white font-bold text-lg">OriClaw</span>
           </Link>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <span className="text-slate-400 text-sm hidden sm:block">{userEmail}</span>
+            {onBillingPortal && (
+              <button
+                onClick={onBillingPortal}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm transition-colors"
+                title="Gerenciar assinatura"
+              >
+                <CreditCard className="w-4 h-4" />
+                <span className="hidden sm:block">Assinatura</span>
+              </button>
+            )}
             <button
               onClick={onLogout}
               className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm transition-colors"
