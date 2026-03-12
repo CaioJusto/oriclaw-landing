@@ -58,6 +58,7 @@ interface DetailedHealthData {
 interface ChatUrlData {
   url: string;
   available: boolean;
+  token?: string;
 }
 
 type ChannelStatus = "connected" | "disconnected" | "not_configured" | "configured";
@@ -298,8 +299,12 @@ function QRModal({
           </button>
         </div>
 
+        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-3 py-2 mb-3">
+          <p className="text-yellow-400 text-xs font-medium">O assistente precisa de um numero de WhatsApp proprio. Nao conecte seu numero pessoal — use um chip dedicado. Para atendimento ao cliente, recomendamos o Telegram.</p>
+        </div>
+
         <p className="text-slate-400 text-sm mb-1">
-          Abra o WhatsApp → Menu <span className="font-mono">⋮</span> → Dispositivos conectados → Conectar dispositivo
+          Abra o WhatsApp &rarr; Menu <span className="font-mono">⋮</span> &rarr; Dispositivos conectados &rarr; Conectar dispositivo
         </p>
         <p className="text-slate-500 text-xs mb-4">
           O QR code atualiza automaticamente a cada 3 segundos.
@@ -1190,6 +1195,8 @@ function ChannelCard({
   iconColor,
   status,
   info,
+  badge,
+  hint,
   onConfigure,
   onReconnect,
   onDisconnect,
@@ -1199,6 +1206,8 @@ function ChannelCard({
   iconColor: string;
   status: ChannelStatus;
   info: string | null;
+  badge?: string;
+  hint?: string;
   onConfigure: () => void;
   onReconnect: () => void;
   onDisconnect: () => void;
@@ -1208,12 +1217,19 @@ function ChannelCard({
       <div className="flex items-center gap-2">
         <Icon className={`w-4 h-4 ${iconColor}`} />
         <span className="text-white font-medium text-sm">{name}</span>
+        {badge && (
+          <span className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-sky-500/20 text-sky-400 border border-sky-500/30">{badge}</span>
+        )}
       </div>
 
       <StatusBadge status={status} />
 
       {info && (
         <p className="text-slate-400 text-xs font-mono truncate">{info}</p>
+      )}
+
+      {hint && !info && (
+        <p className="text-slate-500 text-[11px] leading-tight">{hint}</p>
       )}
 
       <div className="mt-auto">
@@ -1301,18 +1317,19 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
     } catch { /* ignore */ }
   }, [instance.id, token]);
 
-  const fetchChatUrl = useCallback(async () => {
-    try {
-      const data = await proxyCall("GET", instance.id, "chat-url", token);
-      if (!data.error) setChatUrlData(data as ChatUrlData);
-    } catch { /* ignore */ }
-  }, [instance.id, token]);
 
   const fetchChannels = useCallback(async () => {
     try {
       const data = await proxyCall("GET", instance.id, "channels", token);
       if (!data.error) setChannels(data as ChannelsData);
     } catch { /* VPS may not have channels endpoint yet */ }
+  }, [instance.id, token]);
+
+  const fetchChatUrl = useCallback(async () => {
+    try {
+      const data = await proxyCall("GET", instance.id, "chat-url", token);
+      if (!data.error) setChatUrlData(data as ChatUrlData);
+    } catch { /* ignore */ }
   }, [instance.id, token]);
 
   const fetchCredits = useCallback(async () => {
@@ -1341,6 +1358,7 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
       setPollingPaused(false);
       fetchDetailedHealth();
       fetchChannels();
+      fetchChatUrl();
     } else {
       failureCountRef.current += 1;
 
@@ -1359,7 +1377,7 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
     }
 
     pollTimeoutRef.current = setTimeout(runHealthPollingCycle, pollIntervalMsRef.current);
-  }, [clearPollingTimer, fetchChannels, fetchDetailedHealth, fetchHealth]);
+  }, [clearPollingTimer, fetchChatUrl, fetchChannels, fetchDetailedHealth, fetchHealth]);
 
   const restartHealthPolling = useCallback(() => {
     pollingStoppedRef.current = false;
@@ -1563,19 +1581,11 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
             {channels ? (
               <div className="grid grid-cols-3 gap-3">
                 <ChannelCard
-                  name="WhatsApp"
-                  icon={MessageCircle}
-                  iconColor="text-green-400"
-                  status={channels.whatsapp.status}
-                  info={channels.whatsapp.phone}
-                  onConfigure={() => setShowQR(true)}
-                  onReconnect={() => setShowQR(true)}
-                  onDisconnect={() => disconnectChannel("whatsapp")}
-                />
-                <ChannelCard
                   name="Telegram"
                   icon={Send}
                   iconColor="text-sky-400"
+                  badge="Recomendado"
+                  hint="Crie um bot via @BotFather e conecte em segundos"
                   status={channels.telegram.status}
                   info={channels.telegram.username}
                   onConfigure={() => setShowTelegram(true)}
@@ -1586,29 +1596,32 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
                   name="Discord"
                   icon={Hash}
                   iconColor="text-indigo-400"
+                  hint="Ideal para comunidades e servidores"
                   status={channels.discord.status}
                   info={channels.discord.guild}
                   onConfigure={() => setShowDiscord(true)}
                   onReconnect={() => setShowDiscord(true)}
                   onDisconnect={() => disconnectChannel("discord")}
                 />
+                <ChannelCard
+                  name="WhatsApp"
+                  icon={MessageCircle}
+                  iconColor="text-green-400"
+                  hint="Requer numero proprio — nao use seu WhatsApp pessoal"
+                  status={channels.whatsapp.status}
+                  info={channels.whatsapp.phone}
+                  onConfigure={() => setShowQR(true)}
+                  onReconnect={() => setShowQR(true)}
+                  onDisconnect={() => disconnectChannel("whatsapp")}
+                />
               </div>
             ) : (
               /* Fallback while channels API is loading or unavailable */
               <div className="space-y-2">
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/50 border border-slate-700">
-                  <MessageCircle className="w-4 h-4 text-green-400" />
-                  <span className="text-white text-sm">WhatsApp</span>
-                  <button
-                    onClick={() => setShowQR(true)}
-                    className="ml-auto px-3 py-1 rounded-lg bg-red-500/20 border border-red-400/30 text-red-400 text-xs hover:bg-red-500/30 transition-all"
-                  >
-                    Reconectar
-                  </button>
-                </div>
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/50 border border-slate-700">
                   <Send className="w-4 h-4 text-sky-400" />
                   <span className="text-white text-sm">Telegram</span>
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-sky-500/20 text-sky-400 border border-sky-500/30">Recomendado</span>
                   <button
                     onClick={() => setShowTelegram(true)}
                     className="ml-auto px-3 py-1 rounded-lg bg-red-500/20 border border-red-400/30 text-red-400 text-xs hover:bg-red-500/30 transition-all"
@@ -1624,6 +1637,17 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
                     className="ml-auto px-3 py-1 rounded-lg bg-red-500/20 border border-red-400/30 text-red-400 text-xs hover:bg-red-500/30 transition-all"
                   >
                     Configurar
+                  </button>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/50 border border-slate-700">
+                  <MessageCircle className="w-4 h-4 text-green-400" />
+                  <span className="text-white text-sm">WhatsApp</span>
+                  <span className="text-slate-500 text-[10px]">uso pessoal</span>
+                  <button
+                    onClick={() => setShowQR(true)}
+                    className="ml-auto px-3 py-1 rounded-lg bg-red-500/20 border border-red-400/30 text-red-400 text-xs hover:bg-red-500/30 transition-all"
+                  >
+                    Conectar
                   </button>
                 </div>
               </div>
@@ -1761,23 +1785,36 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
 
         {/* ── Chat Direto ── */}
         <div className="bg-slate-900 rounded-2xl border border-slate-800 p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <MessageCircle className="w-4 h-4 text-slate-400" />
-            <h2 className="text-white font-semibold">💬 Chat com seu assistente</h2>
-          </div>
-
-          {chatUrlData?.available ? (
-            <div className="flex flex-col items-center justify-center h-40 gap-4">
-              <p className="text-slate-400 text-sm">O chat abre em uma nova aba por segurança.</p>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <MessageCircle className="w-4 h-4 text-slate-400" />
+              <h2 className="text-white font-semibold">💬 Chat com seu assistente</h2>
+            </div>
+            {chatUrlData?.available && (
               <a
                 href={chatUrlData.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-6 py-3 bg-red-500 hover:bg-red-400 text-white rounded-xl font-medium transition-colors"
+                className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
               >
-                Abrir Chat →
+                Abrir em nova aba
               </a>
-            </div>
+            )}
+          </div>
+
+          {chatUrlData?.available ? (
+            <iframe
+              src={chatUrlData.url}
+              className="w-full rounded-xl border border-slate-700 bg-black"
+              style={{ height: "600px" }}
+              allow="clipboard-write"
+              onLoad={() => {
+                // Auto-approve device pairing when iframe loads
+                proxyCall("POST", instance.id, "chat-approve", token).catch(() => {});
+                setTimeout(() => proxyCall("POST", instance.id, "chat-approve", token).catch(() => {}), 3000);
+                setTimeout(() => proxyCall("POST", instance.id, "chat-approve", token).catch(() => {}), 8000);
+              }}
+            />
           ) : (
             <div className="flex items-center gap-3 p-4 rounded-xl bg-slate-800/50 border border-slate-700 text-slate-400 text-sm">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
