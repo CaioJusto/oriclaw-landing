@@ -27,7 +27,7 @@ function CallbackContent() {
 
   return (
     <main className="min-h-screen bg-slate-950 flex items-center justify-center">
-      <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
+      <Loader2 className="w-8 h-8 text-red-400 animate-spin" />
     </main>
   );
 }

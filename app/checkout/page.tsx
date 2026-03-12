@@ -15,7 +15,7 @@ const planDetails: Record<string, {
 }> = {
   starter: {
     name: "Starter",
-    price: "R$97/mês",
+    price: "R$120/mês",
     specs: ["1 vCPU", "2GB RAM", "50GB SSD"],
     features: [
       "WhatsApp + Telegram + Discord",
@@ -26,7 +26,7 @@ const planDetails: Record<string, {
   },
   pro: {
     name: "Pro",
-    price: "R$147/mês",
+    price: "R$240/mês",
     specs: ["2 vCPU", "4GB RAM", "100GB SSD"],
     features: [
       "Tudo do Starter",
@@ -37,7 +37,7 @@ const planDetails: Record<string, {
   },
   business: {
     name: "Business",
-    price: "R$247/mês",
+    price: "R$480/mês",
     specs: ["4 vCPU", "8GB RAM", "200GB SSD"],
     features: [
       "Tudo do Pro",
@@ -95,7 +95,7 @@ function CheckoutContent() {
     <main className="min-h-screen bg-slate-950 flex items-center justify-center px-4 py-12">
       {/* Background glow */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="w-[600px] h-[300px] bg-violet-600/10 rounded-full blur-3xl" />
+        <div className="w-[600px] h-[300px] bg-red-500/10 rounded-full blur-3xl" />
       </div>
 
       <div className="relative w-full max-w-md">
@@ -110,9 +110,7 @@ function CheckoutContent() {
 
         {/* Logo */}
         <div className="flex items-center gap-2 mb-8">
-          <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center">
-            <span className="text-white font-bold text-sm">O</span>
-          </div>
+          <span className="text-2xl">🦀</span>
           <span className="text-white font-bold text-xl">OriClaw</span>
         </div>
 
@@ -152,7 +150,7 @@ function CheckoutContent() {
             <ul className="space-y-2">
               {plan.features.map((f) => (
                 <li key={f} className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-violet-400 flex-shrink-0" />
+                  <Check className="w-4 h-4 text-red-400 flex-shrink-0" />
                   <span className="text-slate-300 text-sm">{f}</span>
                 </li>
               ))}
@@ -169,7 +167,7 @@ function CheckoutContent() {
             <button
               onClick={handleCheckout}
               disabled={loading}
-              className="w-full py-4 px-6 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-60 text-white font-semibold text-base transition-all flex items-center justify-center gap-2 shadow-lg shadow-violet-600/25"
+              className="w-full py-4 px-6 rounded-xl bg-red-500 hover:bg-red-400 disabled:opacity-60 text-white font-semibold text-base transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-500/25"
             >
               {loading ? (
                 <>
@@ -205,7 +203,7 @@ export default function CheckoutPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
+        <Loader2 className="w-8 h-8 text-red-400 animate-spin" />
       </div>
     }>
       <CheckoutContent />

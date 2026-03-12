@@ -163,9 +163,9 @@ function StepDots({ current, total }: { current: number; total: number }) {
           key={i}
           className={`h-2 rounded-full transition-all duration-300 ${
             i < current
-              ? "w-6 bg-violet-600"
+              ? "w-6 bg-red-500"
               : i === current
-              ? "w-8 bg-violet-400"
+              ? "w-8 bg-red-400"
               : "w-2 bg-slate-700"
           }`}
         />
@@ -238,7 +238,7 @@ function OpenAIConnectButton({
           href="https://platform.openai.com/api-keys"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-violet-400 hover:text-violet-300 underline"
+          className="text-red-400 hover:text-red-300 underline"
         >
           platform.openai.com/api-keys
         </a>
@@ -248,7 +248,7 @@ function OpenAIConnectButton({
         value={openaiApiKey}
         onChange={(e) => setOpenaiApiKey(e.target.value)}
         placeholder="sk-..."
-        className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-violet-600 transition-colors"
+        className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-red-500 transition-colors"
       />
       {error && (
         <p className="text-red-400 text-xs flex items-center gap-1">
@@ -258,7 +258,7 @@ function OpenAIConnectButton({
       <button
         onClick={handleSaveOpenAIKey}
         disabled={loading || !openaiApiKey}
-        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-60 text-white font-semibold text-sm transition-all"
+        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-red-500 hover:bg-red-400 disabled:opacity-60 text-white font-semibold text-sm transition-all"
       >
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
         Salvar API Key
@@ -329,13 +329,13 @@ function PurchaseModal({
               onClick={() => setSelectedAmount(p.amount)}
               className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${
                 selectedAmount === p.amount
-                  ? "bg-violet-600/20 border-violet-500 border-2"
+                  ? "bg-red-500/20 border-red-400 border-2"
                   : "bg-slate-800 border-slate-700 hover:border-slate-600"
               }`}
             >
               <span className="text-white font-semibold">{p.label}</span>
               <span className="text-slate-400 text-sm">{p.msgs}</span>
-              {selectedAmount === p.amount && <CheckCircle className="w-4 h-4 text-violet-400 ml-2" />}
+              {selectedAmount === p.amount && <CheckCircle className="w-4 h-4 text-red-400 ml-2" />}
             </button>
           ))}
         </div>
@@ -352,7 +352,7 @@ function PurchaseModal({
         <button
           onClick={handlePurchase}
           disabled={!selectedAmount || loading}
-          className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-semibold flex items-center justify-center gap-2 transition-all"
+          className="w-full py-3 rounded-xl bg-red-500 hover:bg-red-400 disabled:opacity-50 text-white font-semibold flex items-center justify-center gap-2 transition-all"
         >
           {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Redirecionando...</>
             : "Pagar com Stripe"}
@@ -638,9 +638,7 @@ export default function OnboardingPage() {
     <main className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-4 py-12">
       {/* Logo */}
       <div className="flex items-center gap-2 mb-10">
-        <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center">
-          <span className="text-white font-bold text-sm">O</span>
-        </div>
+        <span className="text-2xl">🦀</span>
         <span className="text-white font-bold text-xl">OriClaw</span>
       </div>
 
@@ -654,7 +652,7 @@ export default function OnboardingPage() {
                 <AlertCircle className="w-12 h-12 text-red-400 mx-auto" />
                 <h2 className="text-xl font-bold text-white">Falha no provisionamento</h2>
                 <p className="text-gray-400">{provisioningError}</p>
-                <a href="mailto:suporte@oriclaw.com.br" className="text-violet-400 underline">
+                <a href="mailto:suporte@oriclaw.com.br" className="text-red-400 underline">
                   Falar com suporte
                 </a>
               </div>
@@ -665,7 +663,7 @@ export default function OnboardingPage() {
                 {/* Animated progress bar */}
                 <div className="w-full bg-slate-800 rounded-full h-2 mb-6 overflow-hidden">
                   <div
-                    className="h-2 rounded-full bg-violet-500"
+                    className="h-2 rounded-full bg-red-400"
                     style={{
                       animation: "provisioningProgress 900s linear forwards",
                       width: "0%",
@@ -730,7 +728,7 @@ export default function OnboardingPage() {
             </div>
             <button
               onClick={() => setStep(1)}
-              className="w-full mt-6 py-3 px-6 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-violet-600/20"
+              className="w-full mt-6 py-3 px-6 rounded-2xl bg-red-500 hover:bg-red-400 text-white font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-red-500/20"
             >
               Próximo <ChevronRight className="w-5 h-5" />
             </button>
@@ -749,7 +747,7 @@ export default function OnboardingPage() {
               {/* ── Option A: BYOK ── */}
               <div className={`rounded-2xl border-2 transition-all overflow-hidden ${
                 aiMode === "byok"
-                  ? "border-violet-500 bg-violet-600/10"
+                  ? "border-red-400 bg-red-500/10"
                   : "border-slate-800 bg-slate-900 hover:border-slate-600"
               }`}>
                 <button
@@ -757,7 +755,7 @@ export default function OnboardingPage() {
                   onClick={() => setAIMode(aiMode === "byok" ? null : "byok")}
                 >
                   <div className="p-2.5 rounded-xl bg-slate-800 flex-shrink-0">
-                    <Key className="w-5 h-5 text-violet-400" />
+                    <Key className="w-5 h-5 text-red-400" />
                   </div>
                   <div className="flex-1">
                     <p className="text-white font-semibold">Usar minha chave de API</p>
@@ -766,14 +764,14 @@ export default function OnboardingPage() {
                     </p>
                   </div>
                   {aiMode === "byok" ? (
-                    <CheckCircle className="w-5 h-5 text-violet-400 flex-shrink-0 mt-0.5" />
+                    <CheckCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
                   ) : (
                     <div className="w-5 h-5 rounded-full border-2 border-slate-600 flex-shrink-0 mt-0.5" />
                   )}
                 </button>
 
                 {aiMode === "byok" && (
-                  <div className="px-4 pb-4 space-y-3 border-t border-violet-500/20 pt-4">
+                  <div className="px-4 pb-4 space-y-3 border-t border-red-400/20 pt-4">
                     {/* Provider dropdown */}
                     <div className="relative">
                       <label className="block text-xs font-medium text-slate-400 mb-1.5">Provedor</label>
@@ -794,10 +792,10 @@ export default function OnboardingPage() {
                               key={p.id}
                               onClick={() => { setByokProvider(p.id); setApiKey(""); setShowProviderDropdown(false); }}
                               className={`w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm hover:bg-slate-700 transition-colors ${
-                                byokProvider === p.id ? "text-violet-400" : "text-white"
+                                byokProvider === p.id ? "text-red-400" : "text-white"
                               }`}
                             >
-                              {byokProvider === p.id && <CheckCircle className="w-3.5 h-3.5 text-violet-400" />}
+                              {byokProvider === p.id && <CheckCircle className="w-3.5 h-3.5 text-red-400" />}
                               {byokProvider !== p.id && <div className="w-3.5 h-3.5" />}
                               <span>{p.label}</span>
                               <span className="text-slate-400">({p.company})</span>
@@ -815,7 +813,7 @@ export default function OnboardingPage() {
                         value={apiKey}
                         onChange={(e) => setApiKey(e.target.value)}
                         placeholder={selectedByokProvider.placeholder}
-                        className={`w-full px-4 py-2.5 rounded-xl bg-slate-800 border text-white placeholder-slate-500 focus:outline-none focus:border-violet-600 text-sm transition-colors ${
+                        className={`w-full px-4 py-2.5 rounded-xl bg-slate-800 border text-white placeholder-slate-500 focus:outline-none focus:border-red-500 text-sm transition-colors ${
                           apiKey && !canProceedStep1() ? "border-red-500/60" : "border-slate-700"
                         }`}
                       />
@@ -830,7 +828,7 @@ export default function OnboardingPage() {
                     </div>
                     <button
                       onClick={() => setShowKeyHint(true)}
-                      className="flex items-center gap-1 text-violet-400 hover:text-violet-300 text-xs transition-colors"
+                      className="flex items-center gap-1 text-red-400 hover:text-red-300 text-xs transition-colors"
                     >
                       Como obter minha chave <ExternalLink className="w-3 h-3" />
                     </button>
@@ -841,7 +839,7 @@ export default function OnboardingPage() {
               {/* ── Option B: OriClaw Credits ── */}
               <div className={`rounded-2xl border-2 transition-all overflow-hidden ${
                 aiMode === "credits"
-                  ? "border-violet-500 bg-violet-600/10"
+                  ? "border-red-400 bg-red-500/10"
                   : "border-slate-800 bg-slate-900 hover:border-slate-600"
               }`}>
                 <button
@@ -849,12 +847,12 @@ export default function OnboardingPage() {
                   onClick={() => setAIMode(aiMode === "credits" ? null : "credits")}
                 >
                   <div className="p-2.5 rounded-xl bg-slate-800 flex-shrink-0">
-                    <CreditCard className="w-5 h-5 text-violet-400" />
+                    <CreditCard className="w-5 h-5 text-red-400" />
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <p className="text-white font-semibold">Usar créditos OriClaw</p>
-                      <span className="text-xs bg-violet-600/20 text-violet-400 px-2 py-0.5 rounded-full border border-violet-500/30">
+                      <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full border border-red-400/30">
                         Recomendado
                       </span>
                     </div>
@@ -863,14 +861,14 @@ export default function OnboardingPage() {
                     </p>
                   </div>
                   {aiMode === "credits" ? (
-                    <CheckCircle className="w-5 h-5 text-violet-400 flex-shrink-0 mt-0.5" />
+                    <CheckCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
                   ) : (
                     <div className="w-5 h-5 rounded-full border-2 border-slate-600 flex-shrink-0 mt-0.5" />
                   )}
                 </button>
 
                 {aiMode === "credits" && (
-                  <div className="px-4 pb-4 border-t border-violet-500/20 pt-4 space-y-3">
+                  <div className="px-4 pb-4 border-t border-red-400/20 pt-4 space-y-3">
                     <div className="flex items-center justify-between p-3 rounded-xl bg-slate-800">
                       <span className="text-slate-400 text-sm">Seu saldo atual</span>
                       <span className="text-white font-semibold">
@@ -879,7 +877,7 @@ export default function OnboardingPage() {
                     </div>
                     <button
                       onClick={() => setShowPurchaseModal(true)}
-                      className="w-full py-2.5 rounded-xl bg-violet-600/20 border border-violet-500/30 text-violet-400 text-sm font-medium hover:bg-violet-600/30 transition-all"
+                      className="w-full py-2.5 rounded-xl bg-red-500/20 border border-red-400/30 text-red-400 text-sm font-medium hover:bg-red-500/30 transition-all"
                     >
                       Comprar créditos agora
                     </button>
@@ -893,7 +891,7 @@ export default function OnboardingPage() {
               {/* ── Option C: ChatGPT Plus ── */}
               <div className={`rounded-2xl border-2 transition-all overflow-hidden ${
                 aiMode === "chatgpt"
-                  ? "border-violet-500 bg-violet-600/10"
+                  ? "border-red-400 bg-red-500/10"
                   : "border-slate-800 bg-slate-900 hover:border-slate-600"
               }`}>
                 <button
@@ -901,7 +899,7 @@ export default function OnboardingPage() {
                   onClick={() => setAIMode(aiMode === "chatgpt" ? null : "chatgpt")}
                 >
                   <div className="p-2.5 rounded-xl bg-slate-800 flex-shrink-0">
-                    <Zap className="w-5 h-5 text-violet-400" />
+                    <Zap className="w-5 h-5 text-red-400" />
                   </div>
                   <div className="flex-1">
                     <p className="text-white font-semibold">Usar minha assinatura ChatGPT Plus</p>
@@ -910,14 +908,14 @@ export default function OnboardingPage() {
                     </p>
                   </div>
                   {aiMode === "chatgpt" ? (
-                    <CheckCircle className="w-5 h-5 text-violet-400 flex-shrink-0 mt-0.5" />
+                    <CheckCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
                   ) : (
                     <div className="w-5 h-5 rounded-full border-2 border-slate-600 flex-shrink-0 mt-0.5" />
                   )}
                 </button>
 
                 {aiMode === "chatgpt" && instance?.id && token && (
-                  <div className="px-4 pb-4 border-t border-violet-500/20 pt-4 space-y-3">
+                  <div className="px-4 pb-4 border-t border-red-400/20 pt-4 space-y-3">
                     <OpenAIConnectButton
                       instanceId={instance.id}
                       token={token}
@@ -944,7 +942,7 @@ export default function OnboardingPage() {
               <button
                 onClick={() => setStep(2)}
                 disabled={!canProceedStep1()}
-                className="flex-1 py-3 px-6 rounded-2xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-violet-600/20"
+                className="flex-1 py-3 px-6 rounded-2xl bg-red-500 hover:bg-red-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-red-500/20"
               >
                 Próximo <ChevronRight className="w-5 h-5" />
               </button>
@@ -969,7 +967,7 @@ export default function OnboardingPage() {
                   onChange={(e) => setAssistantName(e.target.value)}
                   placeholder="Ori"
                   maxLength={32}
-                  className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-violet-600 focus:ring-1 focus:ring-violet-600 text-sm transition-colors"
+                  className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 text-sm transition-colors"
                 />
               </div>
               <div>
@@ -982,7 +980,7 @@ export default function OnboardingPage() {
                   onChange={(e) => setPersonality(e.target.value)}
                   placeholder="Sou seu assistente pessoal. Sou prestativo, direto e amigável."
                   rows={3}
-                  className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-violet-600 focus:ring-1 focus:ring-violet-600 text-sm transition-colors resize-none"
+                  className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 text-sm transition-colors resize-none"
                 />
               </div>
             </div>
@@ -1003,7 +1001,7 @@ export default function OnboardingPage() {
               <button
                 onClick={handleConfigure}
                 disabled={loading || !assistantName.trim()}
-                className="flex-1 py-3 px-6 rounded-2xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-violet-600/20"
+                className="flex-1 py-3 px-6 rounded-2xl bg-red-500 hover:bg-red-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-red-500/20"
               >
                 {loading ? (
                   <><Loader2 className="w-4 h-4 animate-spin" /> Configurando...</>
@@ -1039,7 +1037,7 @@ export default function OnboardingPage() {
                       <p className="text-red-400 font-semibold text-sm text-center">Não foi possível gerar o QR Code. O servidor pode estar iniciando ainda.</p>
                       <button
                         onClick={() => startQRPolling()}
-                        className="mt-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium transition-all"
+                        className="mt-2 px-4 py-2 rounded-xl bg-red-500 hover:bg-red-400 text-white text-sm font-medium transition-all"
                       >
                         Tentar novamente
                       </button>
@@ -1050,13 +1048,13 @@ export default function OnboardingPage() {
                       <p className="text-yellow-400 font-semibold text-sm text-center">Problema de conexão com o servidor. Verifique se o VPS está online.</p>
                     </div>
                   ) : qrData ? (
-                    <div className="p-3 bg-white rounded-2xl shadow-2xl shadow-violet-600/20">
+                    <div className="p-3 bg-white rounded-2xl shadow-2xl shadow-red-500/20">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={qrData} alt="QR Code WhatsApp" className="w-56 h-56 rounded-xl" />
                     </div>
                   ) : (
                     <div className="w-64 h-64 rounded-2xl bg-slate-900 border border-slate-700 flex flex-col items-center justify-center gap-3">
-                      <Loader2 className="w-10 h-10 text-violet-400 animate-spin" />
+                      <Loader2 className="w-10 h-10 text-red-400 animate-spin" />
                       <p className="text-slate-400 text-sm">Aguardando QR code...</p>
                       <p className="text-slate-500 text-xs px-4">O assistente está iniciando, pode levar até 1 minuto</p>
                     </div>
@@ -1102,7 +1100,7 @@ export default function OnboardingPage() {
                       value={telegramToken}
                       onChange={(e) => setTelegramToken(e.target.value)}
                       placeholder="1234567890:ABCdefGHIjklMNOpqrSTUvwxYZ"
-                      className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-violet-600 text-sm transition-colors"
+                      className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-red-500 text-sm transition-colors"
                     />
                     <p className="text-slate-500 text-xs mt-1">
                       Inicie @BotFather no Telegram → /newbot → copie o token
@@ -1119,7 +1117,7 @@ export default function OnboardingPage() {
                 <button
                   onClick={handleConfigureTelegram}
                   disabled={!telegramToken.trim() || loading}
-                  className="w-full py-3 px-6 rounded-2xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-violet-600/20"
+                  className="w-full py-3 px-6 rounded-2xl bg-red-500 hover:bg-red-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-red-500/20"
                 >
                   {loading ? (
                     <><Loader2 className="w-4 h-4 animate-spin" /> Conectando...</>
@@ -1145,7 +1143,7 @@ export default function OnboardingPage() {
 
                 <button
                   onClick={() => setStep(4)}
-                  className="w-full py-3 px-6 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-violet-600/20"
+                  className="w-full py-3 px-6 rounded-2xl bg-red-500 hover:bg-red-400 text-white font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-red-500/20"
                 >
                   Próximo <ChevronRight className="w-5 h-5" />
                 </button>
@@ -1168,7 +1166,7 @@ export default function OnboardingPage() {
                       value={discordToken}
                       onChange={(e) => setDiscordToken(e.target.value)}
                       placeholder="MTI3NjM4..."
-                      className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-violet-600 text-sm transition-colors"
+                      className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-red-500 text-sm transition-colors"
                     />
                     <p className="text-slate-500 text-xs mt-1">
                       Discord Developer Portal → seu app → Bot → Token
@@ -1181,7 +1179,7 @@ export default function OnboardingPage() {
                       value={discordGuildId}
                       onChange={(e) => setDiscordGuildId(e.target.value)}
                       placeholder="123456789012345678"
-                      className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-violet-600 text-sm transition-colors"
+                      className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-red-500 text-sm transition-colors"
                     />
                     <p className="text-slate-500 text-xs mt-1">
                       Clique direito no servidor no Discord → Copiar ID (modo desenvolvedor deve estar ativo)
@@ -1198,7 +1196,7 @@ export default function OnboardingPage() {
                 <button
                   onClick={handleConfigureDiscord}
                   disabled={!discordToken.trim() || !discordGuildId.trim() || loading}
-                  className="w-full py-3 px-6 rounded-2xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-violet-600/20"
+                  className="w-full py-3 px-6 rounded-2xl bg-red-500 hover:bg-red-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-red-500/20"
                 >
                   {loading ? (
                     <><Loader2 className="w-4 h-4 animate-spin" /> Conectando...</>
@@ -1224,7 +1222,7 @@ export default function OnboardingPage() {
 
                 <button
                   onClick={() => setStep(4)}
-                  className="w-full py-3 px-6 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-violet-600/20"
+                  className="w-full py-3 px-6 rounded-2xl bg-red-500 hover:bg-red-400 text-white font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-red-500/20"
                 >
                   Próximo <ChevronRight className="w-5 h-5" />
                 </button>
@@ -1248,12 +1246,12 @@ export default function OnboardingPage() {
 
             <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 text-left mb-8">
               <div className="flex items-center gap-3 mb-3">
-                <Bot className="w-5 h-5 text-violet-400" />
+                <Bot className="w-5 h-5 text-red-400" />
                 <p className="text-slate-300 font-medium">Exemplo de conversa</p>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-end">
-                  <div className="bg-violet-600/20 border border-violet-500/30 rounded-xl px-4 py-2 text-white text-sm max-w-xs">
+                  <div className="bg-red-500/20 border border-red-400/30 rounded-xl px-4 py-2 text-white text-sm max-w-xs">
                     Olá! Quem é você?
                   </div>
                 </div>
@@ -1270,7 +1268,7 @@ export default function OnboardingPage() {
                 if (instance?.id) localStorage.removeItem(`oriclaw_onboarding_step_${instance.id}`);
                 router.push("/dashboard");
               }}
-              className="w-full py-4 px-6 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-lg flex items-center justify-center gap-2 transition-all shadow-lg shadow-violet-600/20"
+              className="w-full py-4 px-6 rounded-2xl bg-red-500 hover:bg-red-400 text-white font-bold text-lg flex items-center justify-center gap-2 transition-all shadow-lg shadow-red-500/20"
             >
               Ir para o painel <ChevronRight className="w-6 h-6" />
             </button>
@@ -1297,7 +1295,7 @@ export default function OnboardingPage() {
                   key={p.id}
                   className={`p-4 rounded-xl border ${
                     byokProvider === p.id
-                      ? "bg-violet-600/10 border-violet-500/40"
+                      ? "bg-red-500/10 border-red-400/40"
                       : "bg-slate-800/50 border-slate-700"
                   }`}
                 >
@@ -1307,7 +1305,7 @@ export default function OnboardingPage() {
                     href={p.link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-violet-400 hover:text-violet-300 text-sm flex items-center gap-1 transition-colors"
+                    className="text-red-400 hover:text-red-300 text-sm flex items-center gap-1 transition-colors"
                   >
                     Abrir {p.company} <ExternalLink className="w-3.5 h-3.5" />
                   </a>

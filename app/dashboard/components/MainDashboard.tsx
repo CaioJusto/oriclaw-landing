@@ -130,8 +130,8 @@ function StatusBadge({ status }: { status: ChannelStatus }) {
   }
   if (status === "configured") {
     return (
-      <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-400">
-        <span className="w-1.5 h-1.5 rounded-full bg-orange-400" />
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-red-400">
+        <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
         Configurado (verificar)
       </span>
     );
@@ -271,7 +271,7 @@ function QRModal({
             <div className="w-56 rounded-2xl bg-red-500/10 border border-red-500/30 flex flex-col items-center justify-center gap-2 px-4 py-6">
               <AlertCircle className="w-10 h-10 text-red-400" />
               <p className="text-red-400 text-sm text-center">Não foi possível carregar o QR Code. Tente novamente.</p>
-              <button onClick={retryPolling} className="mt-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium transition-all">
+              <button onClick={retryPolling} className="mt-2 px-4 py-2 rounded-xl bg-red-500 hover:bg-red-400 text-white text-xs font-medium transition-all">
                 Tentar novamente
               </button>
             </div>
@@ -291,13 +291,13 @@ function QRModal({
             <div className="w-56 h-56 rounded-2xl bg-slate-800 border border-slate-700 flex flex-col items-center justify-center gap-2 px-4">
               <AlertCircle className="w-10 h-10 text-slate-500" />
               <p className="text-slate-400 text-sm text-center">{error}</p>
-              <button onClick={retryPolling} className="text-violet-400 text-sm hover:text-violet-300">
+              <button onClick={retryPolling} className="text-red-400 text-sm hover:text-red-300">
                 Tentar novamente
               </button>
             </div>
           ) : (
             <div className="w-56 h-56 rounded-2xl bg-slate-800 border border-slate-700 flex flex-col items-center justify-center gap-3">
-              <Loader2 className="w-10 h-10 text-violet-400 animate-spin" />
+              <Loader2 className="w-10 h-10 text-red-400 animate-spin" />
               <p className="text-slate-400 text-sm">Aguardando leitura...</p>
             </div>
           )}
@@ -581,7 +581,7 @@ function OpenAIConnectButton({
           href="https://platform.openai.com/api-keys"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-violet-400 hover:text-violet-300 underline"
+          className="text-red-400 hover:text-red-300 underline"
         >
           platform.openai.com/api-keys
         </a>
@@ -591,7 +591,7 @@ function OpenAIConnectButton({
         value={apiKey}
         onChange={(e) => setApiKey(e.target.value)}
         placeholder="sk-..."
-        className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+        className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-400/50"
       />
       {error && (
         <p className="text-red-400 text-xs flex items-center gap-1">
@@ -601,7 +601,7 @@ function OpenAIConnectButton({
       <button
         onClick={handleSaveKey}
         disabled={loading || !apiKey}
-        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-60 text-white font-semibold text-sm transition-all"
+        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-red-500 hover:bg-red-400 disabled:opacity-60 text-white font-semibold text-sm transition-all"
       >
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
         Salvar API Key
@@ -670,13 +670,13 @@ function PurchaseModal({
               onClick={() => setSelected(p.amount)}
               className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${
                 selected === p.amount
-                  ? "bg-violet-600/20 border-violet-500 border-2"
+                  ? "bg-red-500/20 border-red-400 border-2"
                   : "bg-slate-800 border-slate-700 hover:border-slate-600"
               }`}
             >
               <span className="text-white font-bold">R${p.amount}</span>
               <span className="text-slate-400 text-sm">{p.msgs}</span>
-              {selected === p.amount && <CheckCircle className="w-4 h-4 text-violet-400 ml-2 flex-shrink-0" />}
+              {selected === p.amount && <CheckCircle className="w-4 h-4 text-red-400 ml-2 flex-shrink-0" />}
             </button>
           ))}
         </div>
@@ -691,7 +691,7 @@ function PurchaseModal({
         <button
           onClick={handlePurchase}
           disabled={!selected || loading}
-          className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-semibold flex items-center justify-center gap-2 transition-all"
+          className="w-full py-3 rounded-xl bg-red-500 hover:bg-red-400 disabled:opacity-50 text-white font-semibold flex items-center justify-center gap-2 transition-all"
         >
           {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Redirecionando...</>
             : "Pagar com Stripe"}
@@ -742,7 +742,7 @@ function LogDrawer({ instanceId, token, onClose }: { instanceId: string; token: 
         <div className="flex-1 overflow-y-auto p-4">
           {loading ? (
             <div className="flex items-center justify-center h-full">
-              <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
+              <Loader2 className="w-8 h-8 text-red-400 animate-spin" />
             </div>
           ) : (
             <pre className="text-green-400 font-mono text-xs leading-relaxed whitespace-pre-wrap break-all">
@@ -875,7 +875,7 @@ function PersonaModal({
                 onChange={(e) => setSystemPrompt(e.target.value)}
                 rows={6}
                 placeholder="Você é Ori, um assistente amigável e direto. Responda sempre em português..."
-                className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-violet-600 text-sm resize-none"
+                className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-red-500 text-sm resize-none"
               />
               <p className="text-slate-500 text-xs mt-1">
                 Define a personalidade e comportamento do seu assistente.
@@ -889,7 +889,7 @@ function PersonaModal({
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-violet-600 text-sm"
+                className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-red-500 text-sm"
               >
                 {languages.map((l) => (
                   <option key={l.value} value={l.value}>{l.label}</option>
@@ -904,7 +904,7 @@ function PersonaModal({
               <select
                 value={timezone}
                 onChange={(e) => setTimezone(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-violet-600 text-sm"
+                className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-red-500 text-sm"
               >
                 {timezones.map((tz) => (
                   <option key={tz.value} value={tz.value}>{tz.label}</option>
@@ -923,7 +923,7 @@ function PersonaModal({
         <button
           onClick={handleSave}
           disabled={loading || success}
-          className="w-full mt-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-60 text-white font-semibold flex items-center justify-center gap-2 transition-all"
+          className="w-full mt-5 py-3 rounded-xl bg-red-500 hover:bg-red-400 disabled:opacity-60 text-white font-semibold flex items-center justify-center gap-2 transition-all"
         >
           {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</>
             : success ? <><CheckCircle className="w-4 h-4" /> Salvo!</>
@@ -1037,7 +1037,7 @@ function ConfigModal({
                       onClick={() => { setProvider(p); setModel(""); }}
                       className={`flex-1 py-2 px-3 rounded-xl text-sm font-medium transition-all border ${
                         provider === p
-                          ? "bg-violet-600/20 border-violet-500 text-violet-300"
+                          ? "bg-red-500/20 border-red-400 text-red-300"
                           : "bg-slate-800 border-slate-700 text-slate-400 hover:text-white"
                       }`}
                     >
@@ -1056,7 +1056,7 @@ function ConfigModal({
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                   placeholder={provider === "anthropic" ? "sk-ant-..." : "sk-..."}
-                  className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-violet-600 text-sm"
+                  className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-red-500 text-sm"
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   Por segurança, sua chave atual não é exibida. Insira uma nova chave para substituir.
@@ -1067,7 +1067,7 @@ function ConfigModal({
                 <select
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-violet-600 text-sm"
+                  className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white focus:outline-none focus:border-red-500 text-sm"
                 >
                   <option value="">Manter atual</option>
                   {modelOptions[provider].map((m) => (
@@ -1080,10 +1080,10 @@ function ConfigModal({
 
           {/* Credits tab */}
           {tab === "credits" && (
-            <div className="p-4 rounded-xl bg-violet-600/10 border border-violet-500/30">
+            <div className="p-4 rounded-xl bg-red-500/10 border border-red-400/30">
               <div className="flex items-center gap-2 mb-2">
-                <CreditCard className="w-4 h-4 text-violet-400" />
-                <p className="text-violet-300 font-medium text-sm">Créditos OriClaw</p>
+                <CreditCard className="w-4 h-4 text-red-400" />
+                <p className="text-red-300 font-medium text-sm">Créditos OriClaw</p>
               </div>
               <p className="text-slate-400 text-sm">
                 Sem conta de IA necessária. O OriClaw usa nosso OpenRouter para você.
@@ -1114,7 +1114,7 @@ function ConfigModal({
         <button
           onClick={handleSave}
           disabled={loading || success || (tab === "chatgpt" && !chatgptConnected)}
-          className="w-full mt-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-60 text-white font-semibold flex items-center justify-center gap-2 transition-all"
+          className="w-full mt-5 py-3 rounded-xl bg-red-500 hover:bg-red-400 disabled:opacity-60 text-white font-semibold flex items-center justify-center gap-2 transition-all"
         >
           {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</>
             : success ? <><CheckCircle className="w-4 h-4" /> Salvo!</>
@@ -1169,14 +1169,14 @@ function ChannelCard({
         ) : status === "disconnected" ? (
           <button
             onClick={onReconnect}
-            className="w-full py-1.5 rounded-lg bg-violet-600/20 border border-violet-500/30 text-violet-400 text-xs font-medium hover:bg-violet-600/30 transition-all"
+            className="w-full py-1.5 rounded-lg bg-red-500/20 border border-red-400/30 text-red-400 text-xs font-medium hover:bg-red-500/30 transition-all"
           >
             Reconectar
           </button>
         ) : (
           <button
             onClick={onConfigure}
-            className="w-full py-1.5 rounded-lg bg-violet-600/20 border border-violet-500/30 text-violet-400 text-xs font-medium hover:bg-violet-600/30 transition-all"
+            className="w-full py-1.5 rounded-lg bg-red-500/20 border border-red-400/30 text-red-400 text-xs font-medium hover:bg-red-500/30 transition-all"
           >
             Configurar
           </button>
@@ -1377,9 +1377,7 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
       <nav className="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-violet-600 flex items-center justify-center">
-              <span className="text-white font-bold text-xs">O</span>
-            </div>
+            <span className="text-xl">🦀</span>
             <span className="text-white font-bold text-lg">OriClaw</span>
           </Link>
           <div className="flex items-center gap-3">
@@ -1423,7 +1421,7 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
             <h1 className="text-2xl font-bold text-white">Painel</h1>
             <div className="flex items-center gap-2 mt-1">
               {healthLoading ? (
-                <Loader2 className="w-3.5 h-3.5 text-violet-400 animate-spin" />
+                <Loader2 className="w-3.5 h-3.5 text-red-400 animate-spin" />
               ) : (
                 <div className={`w-2 h-2 rounded-full ${isOnline ? "bg-green-400 shadow-sm shadow-green-400" : "bg-red-400"}`} />
               )}
@@ -1545,7 +1543,7 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
                   <span className="text-white text-sm">WhatsApp</span>
                   <button
                     onClick={() => setShowQR(true)}
-                    className="ml-auto px-3 py-1 rounded-lg bg-violet-600/20 border border-violet-500/30 text-violet-400 text-xs hover:bg-violet-600/30 transition-all"
+                    className="ml-auto px-3 py-1 rounded-lg bg-red-500/20 border border-red-400/30 text-red-400 text-xs hover:bg-red-500/30 transition-all"
                   >
                     Reconectar
                   </button>
@@ -1555,7 +1553,7 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
                   <span className="text-white text-sm">Telegram</span>
                   <button
                     onClick={() => setShowTelegram(true)}
-                    className="ml-auto px-3 py-1 rounded-lg bg-violet-600/20 border border-violet-500/30 text-violet-400 text-xs hover:bg-violet-600/30 transition-all"
+                    className="ml-auto px-3 py-1 rounded-lg bg-red-500/20 border border-red-400/30 text-red-400 text-xs hover:bg-red-500/30 transition-all"
                   >
                     Configurar
                   </button>
@@ -1565,7 +1563,7 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
                   <span className="text-white text-sm">Discord</span>
                   <button
                     onClick={() => setShowDiscord(true)}
-                    className="ml-auto px-3 py-1 rounded-lg bg-violet-600/20 border border-violet-500/30 text-violet-400 text-xs hover:bg-violet-600/30 transition-all"
+                    className="ml-auto px-3 py-1 rounded-lg bg-red-500/20 border border-red-400/30 text-red-400 text-xs hover:bg-red-500/30 transition-all"
                   >
                     Configurar
                   </button>
@@ -1594,18 +1592,18 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
               </div>
 
               {isCreditsMode && (
-                <div className="p-3 rounded-xl bg-violet-600/10 border border-violet-500/20">
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-400/20">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-slate-400 text-xs">Créditos restantes</span>
-                    <span className="text-violet-300 font-semibold text-sm">
+                    <span className="text-red-300 font-semibold text-sm">
                       {credits !== null
                         ? `R$ ${credits.toFixed(2).replace(".", ",")}`
-                        : <Loader2 className="w-3.5 h-3.5 animate-spin text-violet-400" />}
+                        : <Loader2 className="w-3.5 h-3.5 animate-spin text-red-400" />}
                     </span>
                   </div>
                   <button
                     onClick={() => setShowPurchase(true)}
-                    className="w-full py-1.5 rounded-lg bg-violet-600/20 border border-violet-500/30 text-violet-400 text-xs font-medium hover:bg-violet-600/30 transition-all"
+                    className="w-full py-1.5 rounded-lg bg-red-500/20 border border-red-400/30 text-red-400 text-xs font-medium hover:bg-red-500/30 transition-all"
                   >
                     💳 Comprar mais créditos
                   </button>
@@ -1717,7 +1715,7 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
                 href={chatUrlData.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-medium transition-colors"
+                className="px-6 py-3 bg-red-500 hover:bg-red-400 text-white rounded-xl font-medium transition-colors"
               >
                 Abrir Chat →
               </a>
@@ -1752,7 +1750,7 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
                 </div>
                 <div>
                   <dt className="text-slate-500 text-xs mb-1">Plano</dt>
-                  <dd className="text-violet-400 text-sm capitalize">{instance.plan}</dd>
+                  <dd className="text-red-400 text-sm capitalize">{instance.plan}</dd>
                 </div>
                 <div>
                   <dt className="text-slate-500 text-xs mb-1">Criado em</dt>

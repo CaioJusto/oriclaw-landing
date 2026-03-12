@@ -32,14 +32,12 @@ function CallbackContent() {
   return (
     <main className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-4">
       <div className="flex items-center gap-2 mb-10">
-        <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center">
-          <span className="text-white font-bold text-sm">O</span>
-        </div>
+        <span className="text-2xl">🦀</span>
         <span className="text-white font-bold text-xl">OriClaw</span>
       </div>
 
       <div className="w-full max-w-sm bg-slate-900 rounded-2xl border border-slate-800 p-8 text-center">
-        <Loader2 className="w-10 h-10 text-violet-400 animate-spin mx-auto mb-4" />
+        <Loader2 className="w-10 h-10 text-red-400 animate-spin mx-auto mb-4" />
         <h2 className="text-white font-semibold text-lg mb-2">Redirecionando...</h2>
         <p className="text-slate-400 text-sm">
           Esta página foi atualizada. Você será redirecionado para o painel.
@@ -54,7 +52,7 @@ export default function OpenAICallbackPage() {
     <Suspense
       fallback={
         <main className="min-h-screen bg-slate-950 flex items-center justify-center">
-          <Loader2 className="w-10 h-10 text-violet-400 animate-spin" />
+          <Loader2 className="w-10 h-10 text-red-400 animate-spin" />
         </main>
       }
     >

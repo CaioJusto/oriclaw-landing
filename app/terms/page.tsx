@@ -9,7 +9,7 @@ export default function TermsPage() {
   return (
     <main className="min-h-screen bg-slate-950 text-slate-300">
       <div className="max-w-3xl mx-auto px-6 py-16">
-        <Link href="/" className="text-violet-400 hover:text-violet-300 text-sm mb-8 inline-block">
+        <Link href="/" className="text-red-400 hover:text-red-300 text-sm mb-8 inline-block">
           ← Voltar ao início
         </Link>
 
@@ -76,7 +76,7 @@ export default function TermsPage() {
             <h2 className="text-xl font-semibold text-white mb-3">7. Contato</h2>
             <p>
               Para dúvidas sobre estes termos, entre em contato:{" "}
-              <a href="mailto:contato@oriclaw.com.br" className="text-violet-400 hover:text-violet-300">
+              <a href="mailto:contato@oriclaw.com.br" className="text-red-400 hover:text-red-300">
                 contato@oriclaw.com.br
               </a>
             </p>

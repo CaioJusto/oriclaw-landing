@@ -29,7 +29,7 @@ export default function ErrorPage({
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button
             onClick={reset}
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold transition-all shadow-lg shadow-violet-600/25"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-red-500 hover:bg-red-400 text-white font-semibold transition-all shadow-lg shadow-red-500/25"
           >
             <RefreshCw className="w-4 h-4" />
             Tentar novamente

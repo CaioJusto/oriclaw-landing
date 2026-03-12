@@ -5,7 +5,7 @@ import { Check, X, Zap, Server, Key } from "lucide-react";
 const plans = [
   {
     name: "Starter",
-    price: "R$97",
+    price: "R$120",
     period: "/mês",
     specs: ["1 vCPU", "2GB RAM", "50GB SSD"],
     features: [
@@ -19,7 +19,7 @@ const plans = [
   },
   {
     name: "Pro",
-    price: "R$147",
+    price: "R$240",
     period: "/mês",
     specs: ["2 vCPU", "4GB RAM", "100GB SSD"],
     features: [
@@ -33,7 +33,7 @@ const plans = [
   },
   {
     name: "Business",
-    price: "R$247",
+    price: "R$480",
     period: "/mês",
     specs: ["4 vCPU", "8GB RAM", "200GB SSD"],
     features: [
@@ -82,11 +82,11 @@ export default function Home() {
       <section className="relative pt-32 pb-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
         {/* Background glow */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-[800px] h-[400px] bg-violet-600/10 rounded-full blur-3xl" />
+          <div className="w-[800px] h-[400px] bg-red-500/10 rounded-full blur-3xl" />
         </div>
 
         <div className="relative max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-600/10 border border-violet-600/20 text-violet-400 text-sm font-medium mb-8">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium mb-8">
             <Zap className="w-4 h-4" />
             Deploy em menos de 1 minuto
           </div>
@@ -106,7 +106,7 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/checkout?plan=pro"
-              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-lg transition-all shadow-lg shadow-violet-600/25 hover:shadow-violet-600/40 hover:-translate-y-0.5"
+              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-red-500 hover:bg-red-400 text-white font-semibold text-lg transition-all shadow-lg shadow-red-500/25 hover:shadow-red-500/40 hover:-translate-y-0.5"
             >
               Começar agora →
             </Link>
@@ -125,14 +125,14 @@ export default function Home() {
         <div className="max-w-4xl mx-auto px-4 text-center">
           <p className="text-slate-400 text-sm sm:text-base">
             <span className="text-slate-300 font-medium">Powered by</span>{" "}
-            <span className="text-violet-400">Claude</span> ·{" "}
-            <span className="text-violet-400">GPT-4</span> ·{" "}
-            <span className="text-violet-400">Gemini</span>
+            <span className="text-red-400">Claude</span> ·{" "}
+            <span className="text-red-400">GPT-4</span> ·{" "}
+            <span className="text-red-400">Gemini</span>
             <span className="mx-4 text-slate-600">|</span>
             <span className="text-slate-300 font-medium">Disponível no</span>{" "}
-            <span className="text-violet-400">WhatsApp</span> ·{" "}
-            <span className="text-violet-400">Telegram</span> ·{" "}
-            <span className="text-violet-400">Discord</span>
+            <span className="text-red-400">WhatsApp</span> ·{" "}
+            <span className="text-red-400">Telegram</span> ·{" "}
+            <span className="text-red-400">Discord</span>
           </p>
         </div>
       </section>
@@ -156,10 +156,10 @@ export default function Home() {
                   <span className="text-slate-300 font-semibold">Método tradicional</span>
                 </div>
               </div>
-              <div className="p-4 text-center bg-violet-600/5">
+              <div className="p-4 text-center bg-red-500/5">
                 <div className="flex items-center justify-center gap-2">
-                  <Check className="w-4 h-4 text-violet-400" />
-                  <span className="text-violet-400 font-semibold">OriClaw</span>
+                  <Check className="w-4 h-4 text-red-400" />
+                  <span className="text-red-400 font-semibold">OriClaw</span>
                 </div>
               </div>
             </div>
@@ -171,7 +171,7 @@ export default function Home() {
               >
                 <div className="p-4 text-slate-300 text-sm font-medium">{row.item}</div>
                 <div className="p-4 text-center text-red-400 text-sm">{row.traditional}</div>
-                <div className="p-4 text-center text-violet-400 text-sm font-medium bg-violet-600/5">
+                <div className="p-4 text-center text-red-400 text-sm font-medium bg-red-500/5">
                   {row.oriclaw}
                 </div>
               </div>
@@ -194,10 +194,10 @@ export default function Home() {
             {features.map((feature, i) => (
               <div
                 key={i}
-                className="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-violet-600/30 transition-colors group"
+                className="p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-red-500/30 transition-colors group"
               >
-                <div className="w-12 h-12 rounded-xl bg-violet-600/10 flex items-center justify-center mb-4 group-hover:bg-violet-600/20 transition-colors">
-                  <feature.icon className="w-6 h-6 text-violet-400" />
+                <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center mb-4 group-hover:bg-red-500/20 transition-colors">
+                  <feature.icon className="w-6 h-6 text-red-400" />
                 </div>
                 <h3 className="text-white font-semibold text-lg mb-2">{feature.title}</h3>
                 <p className="text-slate-400 text-sm leading-relaxed">{feature.description}</p>
@@ -223,13 +223,13 @@ export default function Home() {
                 key={plan.slug}
                 className={`relative p-6 rounded-2xl border transition-colors ${
                   plan.popular
-                    ? "bg-violet-600/10 border-violet-600/50 shadow-lg shadow-violet-600/10"
+                    ? "bg-red-500/10 border-red-500/50 shadow-lg shadow-red-500/10"
                     : "bg-slate-900 border-slate-800 hover:border-slate-700"
                 }`}
               >
                 {plan.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="px-4 py-1 rounded-full bg-violet-600 text-white text-xs font-semibold">
+                    <span className="px-4 py-1 rounded-full bg-red-500 text-white text-xs font-semibold">
                       Mais popular
                     </span>
                   </div>
@@ -259,7 +259,7 @@ export default function Home() {
                 <ul className="space-y-3 mb-8">
                   {plan.features.map((f) => (
                     <li key={f} className="flex items-start gap-2">
-                      <Check className="w-4 h-4 text-violet-400 mt-0.5 flex-shrink-0" />
+                      <Check className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
                       <span className="text-slate-300 text-sm">{f}</span>
                     </li>
                   ))}
@@ -269,7 +269,7 @@ export default function Home() {
                   href={`/checkout?plan=${plan.slug}`}
                   className={`block w-full text-center py-3 px-6 rounded-xl font-semibold transition-all ${
                     plan.popular
-                      ? "bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-600/25 hover:shadow-violet-600/40 hover:-translate-y-0.5"
+                      ? "bg-red-500 hover:bg-red-400 text-white shadow-lg shadow-red-500/25 hover:shadow-red-500/40 hover:-translate-y-0.5"
                       : "bg-slate-800 hover:bg-slate-700 text-white border border-slate-700"
                   }`}
                 >
@@ -284,7 +284,7 @@ export default function Home() {
       {/* Final CTA */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl mx-auto text-center">
-          <div className="p-10 rounded-2xl bg-gradient-to-br from-violet-600/20 to-slate-900 border border-violet-600/20">
+          <div className="p-10 rounded-2xl bg-gradient-to-br from-red-500/20 to-slate-900 border border-red-500/20">
             <h2 className="text-3xl font-bold text-white mb-4">
               Pronto para começar?
             </h2>
@@ -293,7 +293,7 @@ export default function Home() {
             </p>
             <Link
               href="/checkout?plan=pro"
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-lg transition-all shadow-lg shadow-violet-600/25 hover:shadow-violet-600/40 hover:-translate-y-0.5"
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-red-500 hover:bg-red-400 text-white font-semibold text-lg transition-all shadow-lg shadow-red-500/25 hover:shadow-red-500/40 hover:-translate-y-0.5"
             >
               Começar agora →
             </Link>
@@ -305,14 +305,12 @@ export default function Home() {
       <footer className="py-8 px-4 border-t border-slate-800">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-violet-600 flex items-center justify-center">
-              <span className="text-white font-bold text-xs">O</span>
-            </div>
+            <span className="text-lg">🦀</span>
             <span className="text-slate-400 text-sm">OriClaw © 2026</span>
           </div>
           <a
             href="mailto:suporte@oriclaw.com.br"
-            className="text-slate-400 hover:text-violet-400 text-sm transition-colors"
+            className="text-slate-400 hover:text-red-400 text-sm transition-colors"
           >
             suporte@oriclaw.com.br
           </a>

@@ -50,16 +50,14 @@ export default function SignupPage() {
     <main className="min-h-screen bg-slate-950 flex items-center justify-center px-4">
       {/* Background glow */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="w-[600px] h-[300px] bg-violet-600/10 rounded-full blur-3xl" />
+        <div className="w-[600px] h-[300px] bg-red-500/10 rounded-full blur-3xl" />
       </div>
 
       <div className="relative w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-violet-600 flex items-center justify-center">
-              <span className="text-white font-bold text-lg">O</span>
-            </div>
+            <span className="text-3xl">🦀</span>
             <span className="text-white font-bold text-2xl tracking-tight">OriClaw</span>
           </Link>
           <p className="text-slate-400 mt-2 text-sm">Crie sua conta</p>
@@ -90,7 +88,7 @@ export default function SignupPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="seu@email.com"
                   required
-                  className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-violet-600 focus:ring-1 focus:ring-violet-600 transition-colors"
+                  className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
                 />
               </div>
 
@@ -106,7 +104,7 @@ export default function SignupPage() {
                   placeholder="••••••••"
                   required
                   minLength={8}
-                  className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-violet-600 focus:ring-1 focus:ring-violet-600 transition-colors"
+                  className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
                 />
               </div>
 
@@ -122,7 +120,7 @@ export default function SignupPage() {
                   placeholder="••••••••"
                   required
                   minLength={8}
-                  className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-violet-600 focus:ring-1 focus:ring-violet-600 transition-colors"
+                  className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors"
                 />
               </div>
 
@@ -135,7 +133,7 @@ export default function SignupPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 px-6 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold transition-all flex items-center justify-center gap-2 shadow-lg shadow-violet-600/25"
+                className="w-full py-3 px-6 rounded-xl bg-red-500 hover:bg-red-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-500/25"
               >
                 {loading ? (
                   <>
@@ -153,7 +151,7 @@ export default function SignupPage() {
         {/* Footer link */}
         <p className="text-center text-slate-500 text-sm mt-6">
           Já tem conta?{" "}
-          <Link href="/login" className="text-violet-400 hover:text-violet-300 transition-colors">
+          <Link href="/login" className="text-red-400 hover:text-red-300 transition-colors">
             Entrar
           </Link>
         </p>

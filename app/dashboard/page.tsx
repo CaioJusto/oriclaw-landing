@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { Loader2, Server, Clock, AlertTriangle, Settings } from "lucide-react";
+import Link from "next/link";
+import { Loader2, Server, Clock, AlertTriangle, Settings, LogOut, Plus } from "lucide-react";
 import dynamic from "next/dynamic";
 
 const MainDashboard = dynamic(() => import("./components/MainDashboard"), { ssr: false });
@@ -23,8 +24,8 @@ function ProvisioningScreen() {
   return (
     <main className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-4">
       <div className="text-center max-w-md">
-        <div className="w-16 h-16 rounded-2xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center mx-auto mb-6">
-          <Server className="w-8 h-8 text-violet-400" />
+        <div className="w-16 h-16 rounded-2xl bg-red-500/20 border border-red-400/30 flex items-center justify-center mx-auto mb-6">
+          <Server className="w-8 h-8 text-red-400" />
         </div>
         <h1 className="text-2xl font-bold text-white mb-3">Preparando seu servidor</h1>
         <p className="text-slate-400 mb-8">
@@ -33,7 +34,7 @@ function ProvisioningScreen() {
 
         {/* Animated progress bar */}
         <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden mb-6">
-          <div className="h-full bg-violet-600 rounded-full animate-[progress_2s_ease-in-out_infinite]" />
+          <div className="h-full bg-red-500 rounded-full animate-[progress_2s_ease-in-out_infinite]" />
         </div>
 
         <div className="space-y-3 text-left bg-slate-900 rounded-2xl border border-slate-800 p-5">
@@ -89,7 +90,7 @@ function CheckoutProcessingScreen({ timedOut }: { timedOut: boolean }) {
           <h1 className="text-2xl font-bold text-white mb-3">Problema ao processar</h1>
           <p className="text-slate-400">
             Houve um problema ao processar seu pagamento. Entre em contato:{" "}
-            <a href="mailto:suporte@oriclaw.com.br" className="text-violet-400 hover:text-violet-300 transition-colors">
+            <a href="mailto:suporte@oriclaw.com.br" className="text-red-400 hover:text-red-300 transition-colors">
               suporte@oriclaw.com.br
             </a>
           </p>
@@ -101,8 +102,8 @@ function CheckoutProcessingScreen({ timedOut }: { timedOut: boolean }) {
   return (
     <main className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-4">
       <div className="text-center max-w-md">
-        <div className="w-16 h-16 rounded-2xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center mx-auto mb-6">
-          <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
+        <div className="w-16 h-16 rounded-2xl bg-red-500/20 border border-red-400/30 flex items-center justify-center mx-auto mb-6">
+          <Loader2 className="w-8 h-8 text-red-400 animate-spin" />
         </div>
         <h1 className="text-2xl font-bold text-white mb-3">Processando seu pagamento...</h1>
         <p className="text-slate-400">
@@ -133,7 +134,7 @@ function SuspendedScreen({ title, message, showSupportButton = true, extraAction
           {showSupportButton && (
             <a
               href="mailto:suporte@oriclaw.com.br"
-              className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold transition-all shadow-lg shadow-violet-600/25"
+              className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-red-500 hover:bg-red-400 text-white font-semibold transition-all shadow-lg shadow-red-500/25"
             >
               Falar com suporte
             </a>
@@ -155,10 +156,79 @@ function DeletionFailedScreen() {
         <h1 className="text-2xl font-bold text-white mb-3">Problema ao cancelar</h1>
         <p className="text-slate-400 mb-6">
           Houve um problema ao cancelar sua conta. Nossa equipe foi notificada. Contato:{" "}
-          <a href="mailto:suporte@oriclaw.com.br" className="text-violet-400 hover:text-violet-300 transition-colors">
+          <a href="mailto:suporte@oriclaw.com.br" className="text-red-400 hover:text-red-300 transition-colors">
             suporte@oriclaw.com.br
           </a>
         </p>
+      </div>
+    </main>
+  );
+}
+
+// ── Dashboard Navbar (shared across all dashboard states) ─────────────────────
+function DashboardNavbar({ userEmail, onLogout, logoutLoading }: {
+  userEmail: string | null;
+  onLogout: () => void;
+  logoutLoading: boolean;
+}) {
+  return (
+    <nav className="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2">
+          <span className="text-xl">🦀</span>
+          <span className="text-white font-bold text-lg">OriClaw</span>
+        </Link>
+        <div className="flex items-center gap-3">
+          {userEmail && (
+            <span className="text-slate-400 text-sm hidden sm:block">{userEmail}</span>
+          )}
+          <button
+            onClick={onLogout}
+            disabled={logoutLoading}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-slate-300 text-sm transition-colors"
+          >
+            {logoutLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <LogOut className="w-4 h-4" />
+            )}
+            <span className="hidden sm:block">Sair</span>
+          </button>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+// ── No Instance Screen ────────────────────────────────────────────────────────
+function NoInstanceScreen({ userEmail, onLogout, logoutLoading }: {
+  userEmail: string | null;
+  onLogout: () => void;
+  logoutLoading: boolean;
+}) {
+  return (
+    <main className="min-h-screen bg-slate-950">
+      <DashboardNavbar userEmail={userEmail} onLogout={onLogout} logoutLoading={logoutLoading} />
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 className="text-2xl font-bold text-white mb-2">Painel</h1>
+        <p className="text-slate-400 text-sm mb-8">Gerencie suas instâncias OriClaw</p>
+
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-12 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center mx-auto mb-6">
+            <Server className="w-8 h-8 text-slate-500" />
+          </div>
+          <h2 className="text-xl font-semibold text-white mb-2">Nenhuma instância ativa</h2>
+          <p className="text-slate-400 text-sm mb-8 max-w-md mx-auto">
+            Você ainda não tem nenhum OpenClaw rodando. Escolha um plano e tenha seu assistente de IA funcionando em menos de 1 minuto.
+          </p>
+          <Link
+            href="/pricing"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-red-500 hover:bg-red-400 text-white font-semibold transition-all shadow-lg shadow-red-500/25 hover:shadow-red-500/40 hover:-translate-y-0.5"
+          >
+            <Plus className="w-5 h-5" />
+            Criar instância
+          </Link>
+        </div>
       </div>
     </main>
   );
@@ -200,7 +270,7 @@ class ErrorBoundary extends React.Component<
             <p className="text-gray-500 text-sm">{this.state.error?.message}</p>
             <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-violet-600 text-white rounded-lg text-sm hover:bg-violet-700"
+              className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600"
             >
               Recarregar página
             </button>
@@ -327,10 +397,9 @@ function DashboardContent() {
         setToast("Créditos adicionados com sucesso!");
       }
 
-      // ── Route based on status ─────────────────────────────────────────────
+      // ── No instance — show empty dashboard (don't redirect away) ────────
       if (!inst) {
-        // No instance yet — guide user to purchase a plan
-        router.push("/#pricing");
+        setLoading(false);
         return;
       }
 
@@ -404,7 +473,7 @@ function DashboardContent() {
   if (loading) {
     return (
       <main className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
+        <Loader2 className="w-8 h-8 text-red-400 animate-spin" />
       </main>
     );
   }
@@ -414,7 +483,18 @@ function DashboardContent() {
     return <CheckoutProcessingScreen timedOut={checkoutTimedOut} />;
   }
 
-  if (!instance || instance.status === "provisioning") {
+  // No instance — show empty dashboard
+  if (!instance) {
+    return (
+      <NoInstanceScreen
+        userEmail={userEmail}
+        onLogout={handleLogout}
+        logoutLoading={logoutLoading}
+      />
+    );
+  }
+
+  if (instance.status === "provisioning") {
     return <ProvisioningScreen />;
   }
 
@@ -439,7 +519,7 @@ function DashboardContent() {
         extraAction={
           <button
             onClick={handleBillingPortal}
-            className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold transition-all shadow-lg shadow-violet-600/25"
+            className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-red-500 hover:bg-red-400 text-white font-semibold transition-all shadow-lg shadow-red-500/25"
           >
             Atualizar pagamento
           </button>
@@ -464,7 +544,7 @@ function DashboardContent() {
           </p>
           <a
             href="/"
-            className="inline-block px-4 py-2 bg-violet-600 text-white rounded-lg text-sm hover:bg-violet-700"
+            className="inline-block px-4 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600"
           >
             Contratar novamente
           </a>
@@ -557,7 +637,7 @@ export default function DashboardPage() {
     <React.Suspense
       fallback={
         <main className="min-h-screen bg-slate-950 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
+          <Loader2 className="w-8 h-8 text-red-400 animate-spin" />
         </main>
       }
     >
