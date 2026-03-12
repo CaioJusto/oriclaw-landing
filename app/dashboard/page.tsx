@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { Loader2, Server, Clock, AlertTriangle, AlertCircle } from "lucide-react";
+import { Loader2, Server, Clock, AlertTriangle, AlertCircle, Settings } from "lucide-react";
 import dynamic from "next/dynamic";
 
 const MainDashboard = dynamic(() => import("./components/MainDashboard"), { ssr: false });
@@ -239,6 +239,8 @@ export default function DashboardPage() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  // Bug fix #9: show config banner instead of redirecting to onboarding
+  const [showConfigBanner, setShowConfigBanner] = useState(false);
 
   // Post-checkout polling state
   const [checkoutPolling, setCheckoutPolling] = useState(false);
@@ -281,8 +283,9 @@ export default function DashboardPage() {
             setCheckoutPolling(false);
             setInstance(updated);
 
+            // Bug fix #9: show config banner instead of redirecting
             if (updated.status === "needs_config") {
-              router.push("/onboarding");
+              setShowConfigBanner(true);
             }
           } else if (Date.now() >= deadline) {
             if (pollInterval) clearInterval(pollInterval);
@@ -310,8 +313,12 @@ export default function DashboardPage() {
         return;
       }
 
+      // Bug fix #9: Instead of hard redirect, show dashboard with a config banner.
+      // This preserves access to logs/restart and prevents losing context on device change.
       if (inst.status === "needs_config") {
-        router.push("/onboarding");
+        setInstance(inst);
+        setShowConfigBanner(true);
+        setLoading(false);
         return;
       }
 
@@ -322,8 +329,9 @@ export default function DashboardPage() {
           if (updated && updated.status !== "provisioning") {
             if (pollInterval) clearInterval(pollInterval);
             setInstance(updated);
+            // Bug fix #9: show config banner instead of redirecting
             if (updated.status === "needs_config") {
-              router.push("/onboarding");
+              setShowConfigBanner(true);
             }
           }
         }, 10_000);
@@ -424,6 +432,51 @@ export default function DashboardPage() {
           </a>
         </div>
       </div>
+    );
+  }
+
+  // Bug fix #9: Show MainDashboard with a config banner for needs_config status
+  // instead of hard redirect to /onboarding — preserves logs/restart access
+  if (instance.status === "needs_config" || (instance.status === "running" && showConfigBanner)) {
+    return (
+      <>
+        {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
+        {showConfigBanner && (
+          <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500/95 border-b border-amber-400 px-4 py-3 flex items-center justify-between shadow-lg">
+            <div className="flex items-center gap-3">
+              <Settings className="w-5 h-5 text-amber-900 flex-shrink-0" />
+              <span className="text-amber-900 font-semibold text-sm">
+                ⚠️ Configure sua IA para começar a usar o OriClaw
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <a
+                href="/onboarding"
+                className="px-4 py-1.5 rounded-lg bg-amber-900 hover:bg-amber-800 text-amber-100 font-semibold text-sm transition-colors"
+              >
+                Configurar agora
+              </a>
+              <button
+                onClick={() => setShowConfigBanner(false)}
+                className="text-amber-800 hover:text-amber-900 text-lg leading-none ml-1"
+                aria-label="Fechar aviso"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+        <main className={`min-h-screen bg-slate-950 ${showConfigBanner ? "pt-12" : ""}`}>
+          <ErrorBoundary>
+            <MainDashboard
+              instance={instance}
+              userEmail={userEmail ?? ""}
+              token={token ?? ""}
+              onLogout={handleLogout}
+            />
+          </ErrorBoundary>
+        </main>
+      </>
     );
   }
 
