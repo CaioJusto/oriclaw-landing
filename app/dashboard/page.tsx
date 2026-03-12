@@ -257,13 +257,14 @@ export default function DashboardPage() {
     return fetchInstanceWithRetry(userId, accessToken);
   }, []);
 
-  // ── Auth state listener — kick user out if token expires or they sign out ──
+  // ── Auth state listener — kick user out on signout; refresh token on rotation ──
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT" || event === "TOKEN_REFRESHED") {
-        if (event === "SIGNED_OUT") {
-          router.replace("/login");
-        }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT") {
+        router.replace("/login");
+      } else if (event === "TOKEN_REFRESHED" && session) {
+        // Keep the token state in sync so API calls don't fail with 401
+        setToken(session.access_token);
       }
     });
     return () => subscription.unsubscribe();

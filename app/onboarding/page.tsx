@@ -603,7 +603,18 @@ export default function OnboardingPage() {
 
   const canProceedStep1 = () => {
     if (!aiMode) return false;
-    if (aiMode === "byok") return apiKey.trim().length > 0;
+    if (aiMode === "byok") {
+      const key = apiKey.trim();
+      if (!key || key.length < 20) return false;
+      // Validate key prefix matches the selected provider
+      const prefixes: Record<BYOKProvider, string> = {
+        anthropic: "sk-ant-",
+        openai: "sk-",
+        google: "AIza",
+        openrouter: "sk-or-v1-",
+      };
+      return key.startsWith(prefixes[byokProvider]);
+    }
     if (aiMode === "credits") return true; // can proceed with R$0
     if (aiMode === "chatgpt") return chatgptConnected;
     return false;
@@ -793,9 +804,18 @@ export default function OnboardingPage() {
                         value={apiKey}
                         onChange={(e) => setApiKey(e.target.value)}
                         placeholder={selectedByokProvider.placeholder}
-                        className="w-full px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-violet-600 text-sm transition-colors"
+                        className={`w-full px-4 py-2.5 rounded-xl bg-slate-800 border text-white placeholder-slate-500 focus:outline-none focus:border-violet-600 text-sm transition-colors ${
+                          apiKey && !canProceedStep1() ? "border-red-500/60" : "border-slate-700"
+                        }`}
                       />
-                      <p className="text-slate-500 text-xs mt-1">{selectedByokProvider.keyHint}</p>
+                      {apiKey.trim() && !canProceedStep1() ? (
+                        <p className="text-red-400 text-xs mt-1 flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3" />
+                          {selectedByokProvider.keyHint} (formato inválido)
+                        </p>
+                      ) : (
+                        <p className="text-slate-500 text-xs mt-1">{selectedByokProvider.keyHint}</p>
+                      )}
                     </div>
                     <button
                       onClick={() => setShowKeyHint(true)}
