@@ -25,6 +25,7 @@ import {
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Instance {
@@ -93,6 +94,16 @@ async function proxyCall(
     },
     body: body ? JSON.stringify(body) : undefined,
   });
+
+  // Auto-logout on expired/invalid token — prevents silent failures and
+  // ensures the user re-authenticates instead of seeing cryptic error messages.
+  if (res.status === 401) {
+    await supabase.auth.signOut();
+    window.location.replace("/login");
+    // Return a never-resolving promise since we're navigating away
+    return new Promise<never>(() => {});
+  }
+
   return res.json();
 }
 
