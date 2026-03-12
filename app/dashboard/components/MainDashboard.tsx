@@ -377,7 +377,8 @@ function TelegramModal({
         <div className="mb-4">
           <label className="block text-sm font-medium text-slate-300 mb-2">Token do bot Telegram</label>
           <input
-            type="text"
+            type="password"
+            autoComplete="off"
             value={botToken}
             onChange={(e) => setBotToken(e.target.value)}
             placeholder="123456789:AAxxxxxx..."
@@ -473,7 +474,8 @@ function DiscordModal({
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">Token do bot Discord</label>
             <input
-              type="text"
+              type="password"
+              autoComplete="off"
               value={botToken}
               onChange={(e) => setBotToken(e.target.value)}
               placeholder="MTxxxxxx.xxxxxx..."

@@ -60,6 +60,10 @@ function CheckoutContent() {
     setLoading(true);
     setError(null);
     try {
+      // Validate user server-side first, then get session for the token
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.replace("/login"); return; }
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         router.replace("/login");

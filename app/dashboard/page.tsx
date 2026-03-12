@@ -275,6 +275,10 @@ function DashboardContent() {
     let pollInterval: ReturnType<typeof setInterval> | null = null;
 
     const init = async () => {
+      // Validate user server-side first, then get session for the token
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.replace("/login"); return; }
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.replace("/login"); return; }
 
@@ -339,17 +343,25 @@ function DashboardContent() {
         return;
       }
 
-      // Poll while provisioning
+      // Poll while provisioning (with 5 minute timeout)
       if (inst.status === "provisioning") {
+        const provisionDeadline = Date.now() + 5 * 60_000;
         pollInterval = setInterval(async () => {
           const updated = await fetchInstance(session.user.id, session.access_token);
           if (updated && updated.status !== "provisioning") {
             if (pollInterval) clearInterval(pollInterval);
             setInstance(updated);
-            // Bug fix #9: show config banner instead of redirecting
             if (updated.status === "needs_config") {
               setShowConfigBanner(true);
             }
+          } else if (Date.now() >= provisionDeadline) {
+            if (pollInterval) clearInterval(pollInterval);
+            // Show timeout message
+            setInstance({
+              ...(updated ?? inst),
+              status: "suspended",
+              metadata: { error: "O provisionamento está demorando mais que o esperado. Tente recarregar a página ou contate o suporte." },
+            });
           }
         }, 10_000);
       }
@@ -530,8 +542,14 @@ function DashboardContent() {
     );
   }
 
-  // Fallback
-  return <ProvisioningScreen />;
+  // Fallback — unknown status
+  return (
+    <SuspendedScreen
+      title="Status desconhecido"
+      message={`Sua instância está em um estado inesperado (${instance.status}). Tente recarregar a página ou contate o suporte.`}
+      showSupportButton={true}
+    />
+  );
 }
 
 export default function DashboardPage() {

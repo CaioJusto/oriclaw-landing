@@ -22,8 +22,8 @@ export default function SignupPage() {
       return;
     }
 
-    if (password.length < 6) {
-      setError("A senha deve ter no mínimo 6 caracteres.");
+    if (password.length < 8) {
+      setError("A senha deve ter no mínimo 8 caracteres.");
       return;
     }
 
@@ -105,7 +105,7 @@ export default function SignupPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  minLength={6}
+                  minLength={8}
                   className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-violet-600 focus:ring-1 focus:ring-violet-600 transition-colors"
                 />
               </div>
@@ -121,7 +121,7 @@ export default function SignupPage() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  minLength={6}
+                  minLength={8}
                   className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-violet-600 focus:ring-1 focus:ring-violet-600 transition-colors"
                 />
               </div>

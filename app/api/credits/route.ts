@@ -5,10 +5,18 @@
  * POST forwards to /api/credits/purchase (Stripe Hosted Checkout).
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { createSupabaseServerClient } from '@/lib/supabase-server';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
+  // ── Auth validation ──────────────────────────────────────────────────────
+  const supabase = createSupabaseServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
+  }
+
   const authHeader = req.headers.get('authorization') || '';
   try {
     const upstream = await fetch(`${BACKEND_URL}/api/credits`, {
@@ -27,6 +35,13 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  // ── Auth validation ──────────────────────────────────────────────────────
+  const supabasePost = createSupabaseServerClient();
+  const { data: { user: postUser }, error: postAuthError } = await supabasePost.auth.getUser();
+  if (postAuthError || !postUser) {
+    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
+  }
+
   const authHeader = req.headers.get('authorization') || '';
   try {
     const body = await req.json();

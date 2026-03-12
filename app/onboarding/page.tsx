@@ -121,6 +121,9 @@ const BYOK_PROVIDERS: {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 async function getSession() {
+  // Validate user server-side first, then return session for the token
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
   const { data: { session } } = await supabase.auth.getSession();
   return session;
 }
@@ -140,6 +143,14 @@ async function proxyCall(
     },
     body: body ? JSON.stringify(body) : undefined,
   });
+
+  // Auto-redirect on expired/invalid token
+  if (res.status === 401) {
+    await supabase.auth.signOut();
+    window.location.replace("/login");
+    return new Promise<never>(() => {});
+  }
+
   return res.json();
 }
 

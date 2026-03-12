@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createSupabaseServerClient } from '@/lib/supabase-server';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
 
@@ -7,6 +8,13 @@ export async function GET(
   { params }: { params: { customerId: string } }
 ): Promise<NextResponse> {
   try {
+    // ── Auth validation ──────────────────────────────────────────────────────
+    const supabase = createSupabaseServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
+    }
+
     // Forward Authorization header so backend can validate JWT and ownership
     const authHeader = req.headers.get('authorization') || '';
     const res = await fetch(`${BACKEND_URL}/api/instances/${params.customerId}`, {
