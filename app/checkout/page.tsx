@@ -60,16 +60,19 @@ function CheckoutContent() {
     setLoading(true);
     setError(null);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         router.push("/login");
         return;
       }
 
       const res = await fetch(`/api/checkout/session`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: planSlug, email: user.email, supabase_user_id: user.id }),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ plan: planSlug, email: session.user.email, supabase_user_id: session.user.id }),
       });
       const data = await res.json();
       if (data.url) {

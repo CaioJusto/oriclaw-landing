@@ -692,12 +692,19 @@ function LogDrawer({ instanceId, token, onClose }: { instanceId: string; token: 
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const fetchLogs = useCallback(async () => {
-    const data = await proxyCall("GET", instanceId, "logs", token);
-    if (data.logs) {
-      setLogs(data.logs);
+    try {
+      const data = await proxyCall("GET", instanceId, "logs", token);
+      if (data.error) {
+        setLogs(`[Erro ao carregar logs: ${data.error}]`);
+      } else {
+        setLogs(typeof data.logs === 'string' && data.logs ? data.logs : "Nenhum log disponível.");
+      }
+    } catch {
+      setLogs("[Erro de conexão ao carregar logs]");
+    } finally {
       setLoading(false);
-      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     }
+    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
   }, [instanceId, token]);
 
   useEffect(() => { fetchLogs(); }, [fetchLogs]);
@@ -937,8 +944,8 @@ function ConfigModal({
   const [error, setError] = useState<string | null>(null);
 
   const modelOptions = {
-    anthropic: ["claude-sonnet-4-5", "claude-3-5-haiku-latest", "claude-opus-4-5"],
-    openai: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"],
+    anthropic: ["claude-sonnet-4-5", "claude-3-5-haiku-latest", "claude-opus-4"],
+    openai: ["gpt-4o", "gpt-4o-mini"],
   };
 
   const handleSave = async () => {
