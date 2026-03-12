@@ -73,6 +73,8 @@ interface Props {
   token: string;
   onLogout: () => void;
   onBillingPortal?: () => void;
+  billingLoading?: boolean;
+  logoutLoading?: boolean;
 }
 
 // ── API helper ────────────────────────────────────────────────────────────────
@@ -1172,7 +1174,7 @@ function ChannelCard({
 }
 
 // ── Main Dashboard ────────────────────────────────────────────────────────────
-export default function MainDashboard({ instance, userEmail, token, onLogout, onBillingPortal }: Props) {
+export default function MainDashboard({ instance, userEmail, token, onLogout, onBillingPortal, billingLoading, logoutLoading }: Props) {
   const [health, setHealth] = useState<HealthData | null>(null);
   const [healthLoading, setHealthLoading] = useState(true);
   const [detailedHealth, setDetailedHealth] = useState<DetailedHealthData | null>(null);
@@ -1372,18 +1374,28 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
             {onBillingPortal && (
               <button
                 onClick={onBillingPortal}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm transition-colors"
+                disabled={billingLoading}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-slate-300 text-sm transition-colors"
                 title="Gerenciar assinatura"
               >
-                <CreditCard className="w-4 h-4" />
+                {billingLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <CreditCard className="w-4 h-4" />
+                )}
                 <span className="hidden sm:block">Assinatura</span>
               </button>
             )}
             <button
               onClick={onLogout}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm transition-colors"
+              disabled={logoutLoading}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-slate-300 text-sm transition-colors"
             >
-              <LogOut className="w-4 h-4" />
+              {logoutLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <LogOut className="w-4 h-4" />
+              )}
               <span className="hidden sm:block">Sair</span>
             </button>
           </div>

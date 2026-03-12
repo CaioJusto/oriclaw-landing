@@ -241,6 +241,8 @@ export default function DashboardPage() {
   const [toast, setToast] = useState<string | null>(null);
   // Bug fix #9: show config banner instead of redirecting to onboarding
   const [showConfigBanner, setShowConfigBanner] = useState(false);
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
 
   // Post-checkout polling state
   const [checkoutPolling, setCheckoutPolling] = useState(false);
@@ -255,12 +257,24 @@ export default function DashboardPage() {
     return fetchInstanceWithRetry(userId, accessToken);
   }, []);
 
+  // ── Auth state listener — kick user out if token expires or they sign out ──
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT" || event === "TOKEN_REFRESHED") {
+        if (event === "SIGNED_OUT") {
+          router.replace("/login");
+        }
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [router]);
+
   useEffect(() => {
     let pollInterval: ReturnType<typeof setInterval> | null = null;
 
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { router.push("/login"); return; }
+      if (!session) { router.replace("/login"); return; }
 
       setUserEmail(session.user.email ?? null);
       setToken(session.access_token);
@@ -343,12 +357,17 @@ export default function DashboardPage() {
   }, [router, fetchInstance, checkoutParam, creditsParam]);
 
   const handleLogout = async () => {
+    if (logoutLoading) return;
+    setLogoutLoading(true);
     await supabase.auth.signOut();
-    router.push("/");
+    // Use replace so the dashboard is removed from browser history —
+    // prevents the back-button from replaying the session after logout.
+    router.replace("/login");
   };
 
   const handleBillingPortal = async () => {
-    if (!token) return;
+    if (!token || billingLoading) return;
+    setBillingLoading(true);
     try {
       const res = await fetch("/api/billing/portal", {
         method: "POST",
@@ -357,9 +376,13 @@ export default function DashboardPage() {
       if (res.ok) {
         const { url } = await res.json();
         window.location.href = url;
+      } else {
+        setToast("Erro ao abrir portal de pagamento. Tente novamente.");
       }
     } catch {
       setToast("Erro ao abrir portal de pagamento. Tente novamente.");
+    } finally {
+      setBillingLoading(false);
     }
   };
 
@@ -474,6 +497,8 @@ export default function DashboardPage() {
               token={token ?? ""}
               onLogout={handleLogout}
               onBillingPortal={handleBillingPortal}
+              billingLoading={billingLoading}
+              logoutLoading={logoutLoading}
             />
           </ErrorBoundary>
         </main>
@@ -493,6 +518,8 @@ export default function DashboardPage() {
               token={token ?? ""}
               onLogout={handleLogout}
               onBillingPortal={handleBillingPortal}
+              billingLoading={billingLoading}
+              logoutLoading={logoutLoading}
             />
           </ErrorBoundary>
         </main>

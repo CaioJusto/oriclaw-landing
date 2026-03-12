@@ -406,7 +406,7 @@ export default function OnboardingPage() {
   useEffect(() => {
     (async () => {
       const session = await getSession();
-      if (!session) { router.push("/login"); return; }
+      if (!session) { router.replace("/login"); return; }
       setToken(session.access_token);
 
       const fetchInstance = async () => {

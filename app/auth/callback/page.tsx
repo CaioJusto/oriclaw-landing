@@ -9,13 +9,18 @@ function CallbackContent() {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Only act on explicit auth events, not the initial session check.
+      // Redirecting on INITIAL_SESSION (null) would abort email/OAuth flows
+      // before the URL hash token has been processed by Supabase.
       if (event === "PASSWORD_RECOVERY") {
         router.replace("/reset-password");
-      } else if (session) {
+      } else if (event === "SIGNED_IN" && session) {
         router.replace("/dashboard");
-      } else {
+      } else if (event === "SIGNED_OUT") {
         router.replace("/login");
       }
+      // INITIAL_SESSION is intentionally ignored here so the hash-based
+      // token exchange can complete before we decide where to redirect.
     });
     return () => subscription.unsubscribe();
   }, [router]);
