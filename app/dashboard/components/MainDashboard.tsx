@@ -1176,7 +1176,6 @@ export default function MainDashboard({ instance, userEmail, token, onLogout }: 
   const [healthLoading, setHealthLoading] = useState(true);
   const [detailedHealth, setDetailedHealth] = useState<DetailedHealthData | null>(null);
   const [chatUrlData, setChatUrlData] = useState<ChatUrlData | null>(null);
-  const [chatEmbedOpen, setChatEmbedOpen] = useState(false);
   const [channels, setChannels] = useState<ChannelsData | null>(null);
   const [credits, setCredits] = useState<number | null>(null);
 
@@ -1674,36 +1673,16 @@ export default function MainDashboard({ instance, userEmail, token, onLogout }: 
           </div>
 
           {chatUrlData?.available ? (
-            <div className="space-y-4">
-              <p className="text-slate-400 text-sm">
-                Converse diretamente com o Ori pelo navegador, sem WhatsApp.
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <a
-                  href={chatUrlData.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-all"
-                >
-                  <ExternalLink className="w-4 h-4" /> Abrir chat →
-                </a>
-                <button
-                  onClick={() => setChatEmbedOpen((v) => !v)}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-sm font-medium transition-all"
-                >
-                  {chatEmbedOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  {chatEmbedOpen ? "▲ Fechar" : "▼ Abrir aqui"}
-                </button>
-              </div>
-              {chatEmbedOpen && (
-                <div className="rounded-xl overflow-hidden border border-slate-700">
-                  <iframe
-                    src={chatUrlData.url}
-                    className="w-full h-[600px]"
-                    title="OpenClaw Chat"
-                  />
-                </div>
-              )}
+            <div className="flex flex-col items-center justify-center h-40 gap-4">
+              <p className="text-slate-400 text-sm">O chat abre em uma nova aba por segurança.</p>
+              <a
+                href={chatUrlData.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-medium transition-colors"
+              >
+                Abrir Chat →
+              </a>
             </div>
           ) : (
             <div className="flex items-center gap-3 p-4 rounded-xl bg-slate-800/50 border border-slate-700 text-slate-400 text-sm">
