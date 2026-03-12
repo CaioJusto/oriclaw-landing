@@ -170,8 +170,10 @@ function QRModal({
   const [timedOut, setTimedOut] = useState(false);
   const [qrGeneratedAt, setQrGeneratedAt] = useState<number | null>(null);
   const [qrExpired, setQrExpired] = useState(false);
+  const [restarting, setRestarting] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const qrDashboardAttemptsRef = useRef(0);
+  const healthCheckedRef = useRef(false);
 
   const stopPolling = useCallback(() => {
     if (intervalRef.current) {
@@ -200,14 +202,15 @@ function QRModal({
         setQrExpired(false);
         setError(null);
       } else if (data.error) {
-        setError(data.error);
+        // Don't show "QR not available yet" as a final error — keep polling
+        if (!qr) setError(data.error);
       }
     } catch {
       setError("Erro ao buscar QR code");
     }
-  }, [instanceId, token, stopPolling]);
+  }, [instanceId, token, stopPolling, qr]);
 
-  const retryPolling = useCallback(() => {
+  const startPolling = useCallback(() => {
     qrDashboardAttemptsRef.current = 0;
     setTimedOut(false);
     setError(null);
@@ -215,11 +218,44 @@ function QRModal({
     intervalRef.current = setInterval(fetchQR, 3000);
   }, [fetchQR]);
 
+  const retryPolling = useCallback(async () => {
+    // On retry, restart OpenClaw first to ensure it's running
+    setRestarting(true);
+    setError(null);
+    try {
+      await proxyCall("POST", instanceId, "restart", token);
+    } catch { /* ignore — will check via polling */ }
+    setRestarting(false);
+    // Wait a few seconds for OpenClaw to start generating QR
+    setTimeout(() => startPolling(), 3000);
+  }, [instanceId, token, startPolling]);
+
+  // On mount: check health, restart if needed, then start QR polling
   useEffect(() => {
-    fetchQR();
-    intervalRef.current = setInterval(fetchQR, 3000);
+    if (healthCheckedRef.current) return;
+    healthCheckedRef.current = true;
+
+    (async () => {
+      try {
+        const health = await proxyCall("GET", instanceId, "health", token);
+        if (health.openclaw !== "running") {
+          // OpenClaw not running — restart it before polling QR
+          setRestarting(true);
+          try {
+            await proxyCall("POST", instanceId, "restart", token);
+          } catch { /* ignore */ }
+          setRestarting(false);
+          // Wait for OpenClaw to start generating QR
+          setTimeout(() => startPolling(), 4000);
+          return;
+        }
+      } catch { /* health check failed — try polling anyway */ }
+      startPolling();
+    })();
+
     return () => stopPolling();
-  }, [fetchQR, stopPolling]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (connected) {
@@ -265,15 +301,20 @@ function QRModal({
           {connected ? (
             <div className="w-56 h-56 rounded-2xl bg-green-500/10 border-2 border-green-500/40 flex flex-col items-center justify-center gap-3">
               <CheckCircle className="w-14 h-14 text-green-400" />
-              <p className="text-green-400 font-semibold">✅ Conectado!</p>
+              <p className="text-green-400 font-semibold">Conectado!</p>
             </div>
           ) : timedOut ? (
             <div className="w-56 rounded-2xl bg-red-500/10 border border-red-500/30 flex flex-col items-center justify-center gap-2 px-4 py-6">
               <AlertCircle className="w-10 h-10 text-red-400" />
               <p className="text-red-400 text-sm text-center">Não foi possível carregar o QR Code. Tente novamente.</p>
               <button onClick={retryPolling} className="mt-2 px-4 py-2 rounded-xl bg-red-500 hover:bg-red-400 text-white text-xs font-medium transition-all">
-                Tentar novamente
+                Reiniciar e tentar novamente
               </button>
+            </div>
+          ) : restarting ? (
+            <div className="w-56 h-56 rounded-2xl bg-slate-800 border border-slate-700 flex flex-col items-center justify-center gap-3">
+              <Loader2 className="w-10 h-10 text-yellow-400 animate-spin" />
+              <p className="text-slate-400 text-sm text-center">Reiniciando assistente...</p>
             </div>
           ) : qr ? (
             <div className="flex flex-col items-center">
@@ -283,17 +324,15 @@ function QRModal({
               </div>
               {qrExpired && (
                 <p className="text-yellow-400 text-sm text-center mt-2">
-                  ⚠️ QR expirado — aguardando novo código...
+                  QR expirado — aguardando novo código...
                 </p>
               )}
             </div>
           ) : error ? (
             <div className="w-56 h-56 rounded-2xl bg-slate-800 border border-slate-700 flex flex-col items-center justify-center gap-2 px-4">
-              <AlertCircle className="w-10 h-10 text-slate-500" />
-              <p className="text-slate-400 text-sm text-center">{error}</p>
-              <button onClick={retryPolling} className="text-red-400 text-sm hover:text-red-300">
-                Tentar novamente
-              </button>
+              <Loader2 className="w-10 h-10 text-red-400 animate-spin" />
+              <p className="text-slate-400 text-sm text-center">Aguardando QR code...</p>
+              <p className="text-slate-500 text-xs text-center">O assistente está iniciando</p>
             </div>
           ) : (
             <div className="w-56 h-56 rounded-2xl bg-slate-800 border border-slate-700 flex flex-col items-center justify-center gap-3">
