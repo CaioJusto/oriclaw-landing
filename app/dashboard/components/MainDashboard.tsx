@@ -154,6 +154,8 @@ function QRModal({
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [timedOut, setTimedOut] = useState(false);
+  const [qrGeneratedAt, setQrGeneratedAt] = useState<number | null>(null);
+  const [qrExpired, setQrExpired] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const qrDashboardAttemptsRef = useRef(0);
 
@@ -180,6 +182,8 @@ function QRModal({
         stopPolling();
       } else if (data.qr) {
         setQr(data.qr);
+        setQrGeneratedAt(data.generated_at ?? Date.now());
+        setQrExpired(false);
         setError(null);
       } else if (data.error) {
         setError(data.error);
@@ -209,6 +213,19 @@ function QRModal({
       return () => clearTimeout(t);
     }
   }, [connected, onClose]);
+
+  useEffect(() => {
+    if (!qrGeneratedAt) return;
+    const age = Date.now() - qrGeneratedAt;
+    const remaining = 25_000 - age; // 25s de margem
+    if (remaining <= 0) {
+      setQrExpired(true);
+      return;
+    }
+    setQrExpired(false);
+    const timer = setTimeout(() => setQrExpired(true), remaining);
+    return () => clearTimeout(timer);
+  }, [qrGeneratedAt]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
@@ -245,9 +262,16 @@ function QRModal({
               </button>
             </div>
           ) : qr ? (
-            <div className="p-2 bg-white rounded-xl">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={qr} alt="QR Code" className="w-52 h-52 rounded-lg" />
+            <div className="flex flex-col items-center">
+              <div className="p-2 bg-white rounded-xl">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={qr} alt="QR Code" className="w-52 h-52 rounded-lg" />
+              </div>
+              {qrExpired && (
+                <p className="text-yellow-400 text-sm text-center mt-2">
+                  ⚠️ QR expirado — aguardando novo código...
+                </p>
+              )}
             </div>
           ) : error ? (
             <div className="w-56 h-56 rounded-2xl bg-slate-800 border border-slate-700 flex flex-col items-center justify-center gap-2 px-4">

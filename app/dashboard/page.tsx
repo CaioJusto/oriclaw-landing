@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { Loader2, Server, Clock, AlertTriangle } from "lucide-react";
+import { Loader2, Server, Clock, AlertTriangle, AlertCircle } from "lucide-react";
 import dynamic from "next/dynamic";
 
 const MainDashboard = dynamic(() => import("./components/MainDashboard"), { ssr: false });
@@ -405,6 +405,26 @@ export default function DashboardPage() {
   // ── Deletion failed ───────────────────────────────────────────────────────
   if (instance.status === "deletion_failed") {
     return <DeletionFailedScreen />;
+  }
+
+  // ── Deleted ───────────────────────────────────────────────────────────────
+  if (instance.status === "deleted") {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="text-center space-y-4 p-8 max-w-md">
+          <h2 className="text-xl font-bold text-white">Assinatura encerrada</h2>
+          <p className="text-gray-400 text-sm">
+            Sua assinatura foi cancelada e o servidor foi removido.
+          </p>
+          <a
+            href="/"
+            className="inline-block px-4 py-2 bg-violet-600 text-white rounded-lg text-sm hover:bg-violet-700"
+          >
+            Contratar novamente
+          </a>
+        </div>
+      </div>
+    );
   }
 
   if (instance.status === "running") {

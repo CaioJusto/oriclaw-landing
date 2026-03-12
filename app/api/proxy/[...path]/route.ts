@@ -15,7 +15,14 @@ async function handler(
   req: NextRequest,
   { params }: { params: { path: string[] } }
 ): Promise<NextResponse> {
-  const pathStr = params.path.join('/');
+  const pathSegments = params.path as string[];
+
+  // Bloquear path traversal
+  if (pathSegments.some(segment => segment === '..' || segment === '.' || segment.includes('/'))) {
+    return NextResponse.json({ error: 'Path inválido.' }, { status: 400 });
+  }
+
+  const pathStr = pathSegments.join('/');
   const targetUrl = `${BACKEND_URL}/api/proxy/${pathStr}`;
 
   const authHeader = req.headers.get('authorization') ?? '';
