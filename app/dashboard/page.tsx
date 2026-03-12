@@ -22,7 +22,7 @@ interface Instance {
 // ── Provisioning Screen ───────────────────────────────────────────────────────
 function ProvisioningScreen() {
   return (
-    <main className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-4">
+    <main className="flex-1 bg-slate-950 flex flex-col items-center justify-center px-4 py-20">
       <div className="text-center max-w-md">
         <div className="w-16 h-16 rounded-2xl bg-red-500/20 border border-red-400/30 flex items-center justify-center mx-auto mb-6">
           <Server className="w-8 h-8 text-red-400" />
@@ -82,7 +82,7 @@ function ProvisioningScreen() {
 function CheckoutProcessingScreen({ timedOut }: { timedOut: boolean }) {
   if (timedOut) {
     return (
-      <main className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-4">
+      <main className="flex-1 bg-slate-950 flex flex-col items-center justify-center px-4 py-20">
         <div className="text-center max-w-md">
           <div className="w-16 h-16 rounded-2xl bg-red-500/20 border border-red-500/30 flex items-center justify-center mx-auto mb-6">
             <AlertTriangle className="w-8 h-8 text-red-400" />
@@ -100,7 +100,7 @@ function CheckoutProcessingScreen({ timedOut }: { timedOut: boolean }) {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-4">
+    <main className="flex-1 bg-slate-950 flex flex-col items-center justify-center px-4 py-20">
       <div className="text-center max-w-md">
         <div className="w-16 h-16 rounded-2xl bg-red-500/20 border border-red-400/30 flex items-center justify-center mx-auto mb-6">
           <Loader2 className="w-8 h-8 text-red-400 animate-spin" />
@@ -122,7 +122,7 @@ function SuspendedScreen({ title, message, showSupportButton = true, extraAction
   extraAction?: React.ReactNode;
 }) {
   return (
-    <main className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-4">
+    <main className="flex-1 bg-slate-950 flex flex-col items-center justify-center px-4 py-20">
       <div className="text-center max-w-md">
         <div className="w-16 h-16 rounded-2xl bg-yellow-500/20 border border-yellow-500/30 flex items-center justify-center mx-auto mb-6">
           <AlertTriangle className="w-8 h-8 text-yellow-400" />
@@ -148,7 +148,7 @@ function SuspendedScreen({ title, message, showSupportButton = true, extraAction
 // ── Deletion Failed Screen ────────────────────────────────────────────────────
 function DeletionFailedScreen() {
   return (
-    <main className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-4">
+    <main className="flex-1 bg-slate-950 flex flex-col items-center justify-center px-4 py-20">
       <div className="text-center max-w-md">
         <div className="w-16 h-16 rounded-2xl bg-red-500/20 border border-red-500/30 flex items-center justify-center mx-auto mb-6">
           <AlertTriangle className="w-8 h-8 text-red-400" />
@@ -478,9 +478,17 @@ function DashboardContent() {
     );
   }
 
+  // Shared navbar props
+  const navbarProps = { userEmail, onLogout: handleLogout, logoutLoading };
+
   // ── Post-checkout polling screen ──────────────────────────────────────────
   if (checkoutPolling || checkoutTimedOut) {
-    return <CheckoutProcessingScreen timedOut={checkoutTimedOut} />;
+    return (
+      <>
+        <DashboardNavbar {...navbarProps} />
+        <CheckoutProcessingScreen timedOut={checkoutTimedOut} />
+      </>
+    );
   }
 
   // No instance — show empty dashboard
@@ -495,61 +503,80 @@ function DashboardContent() {
   }
 
   if (instance.status === "provisioning") {
-    return <ProvisioningScreen />;
+    return (
+      <>
+        <DashboardNavbar {...navbarProps} />
+        <ProvisioningScreen />
+      </>
+    );
   }
 
   // ── Suspended with error metadata ─────────────────────────────────────────
   if (instance.status === "suspended" && instance.metadata?.error) {
     return (
-      <SuspendedScreen
-        title="Sua instância foi suspensa"
-        message={String(instance.metadata.error)}
-        showSupportButton={true}
-      />
+      <>
+        <DashboardNavbar {...navbarProps} />
+        <SuspendedScreen
+          title="Sua instância foi suspensa"
+          message={String(instance.metadata.error)}
+          showSupportButton={true}
+        />
+      </>
     );
   }
 
   // ── Suspended without error = payment suspension ──────────────────────────
   if (instance.status === "suspended") {
     return (
-      <SuspendedScreen
-        title="Assinatura suspensa"
-        message="Sua assinatura foi suspensa. Atualize seu pagamento para continuar usando o OriClaw."
-        showSupportButton={false}
-        extraAction={
-          <button
-            onClick={handleBillingPortal}
-            className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-red-500 hover:bg-red-400 text-white font-semibold transition-all shadow-lg shadow-red-500/25"
-          >
-            Atualizar pagamento
-          </button>
-        }
-      />
+      <>
+        <DashboardNavbar {...navbarProps} />
+        <SuspendedScreen
+          title="Assinatura suspensa"
+          message="Sua assinatura foi suspensa. Atualize seu pagamento para continuar usando o OriClaw."
+          showSupportButton={false}
+          extraAction={
+            <button
+              onClick={handleBillingPortal}
+              className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-red-500 hover:bg-red-400 text-white font-semibold transition-all shadow-lg shadow-red-500/25"
+            >
+              Atualizar pagamento
+            </button>
+          }
+        />
+      </>
     );
   }
 
   // ── Deletion failed ───────────────────────────────────────────────────────
   if (instance.status === "deletion_failed") {
-    return <DeletionFailedScreen />;
+    return (
+      <>
+        <DashboardNavbar {...navbarProps} />
+        <DeletionFailedScreen />
+      </>
+    );
   }
 
   // ── Deleted ───────────────────────────────────────────────────────────────
   if (instance.status === "deleted") {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="text-center space-y-4 p-8 max-w-md">
-          <h2 className="text-xl font-bold text-white">Assinatura encerrada</h2>
-          <p className="text-gray-400 text-sm">
-            Sua assinatura foi cancelada e o servidor foi removido.
-          </p>
-          <a
-            href="/"
-            className="inline-block px-4 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600"
-          >
-            Contratar novamente
-          </a>
+      <>
+        <DashboardNavbar {...navbarProps} />
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+          <div className="text-center space-y-4 p-8 max-w-md">
+            <h2 className="text-xl font-bold text-white">Assinatura encerrada</h2>
+            <p className="text-slate-400 text-sm">
+              Sua assinatura foi cancelada e o servidor foi removido.
+            </p>
+            <a
+              href="/pricing"
+              className="inline-block px-4 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600"
+            >
+              Contratar novamente
+            </a>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
