@@ -33,14 +33,13 @@ function ProvisioningScreen({ createdAt }: { createdAt?: string }) {
 
   const steps = [
     { label: "Criando servidor", threshold: 0 },
-    { label: "Instalando dependências", threshold: 30 },
-    { label: "Instalando OpenClaw", threshold: 90 },
-    { label: "Configurando serviços", threshold: 180 },
-    { label: "Iniciando VPS Agent", threshold: 300 },
+    { label: "Configurando serviços", threshold: 20 },
+    { label: "Iniciando VPS Agent", threshold: 50 },
+    { label: "Finalizando", threshold: 80 },
   ];
 
   const activeStep = steps.reduce((acc, s, i) => (elapsed >= s.threshold ? i : acc), 0);
-  const progressPercent = Math.min(95, (elapsed / 420) * 100);
+  const progressPercent = Math.min(95, (elapsed / 120) * 100);
 
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60);
@@ -57,7 +56,7 @@ function ProvisioningScreen({ createdAt }: { createdAt?: string }) {
         <h1 className="text-2xl font-bold text-white mb-3">Preparando seu servidor</h1>
         <p className="text-slate-400 mb-8">
           Estamos criando e configurando sua instância na nuvem.
-          Isso leva entre <strong className="text-slate-300">5 e 8 minutos</strong>.
+          Isso leva entre <strong className="text-slate-300">1 e 2 minutos</strong>.
         </p>
 
         {/* Progress bar with real percentage */}
