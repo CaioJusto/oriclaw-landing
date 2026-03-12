@@ -165,6 +165,7 @@ function QRModal({
   onClose: () => void;
 }) {
   const [qr, setQr] = useState<string | null>(null);
+  const [qrAscii, setQrAscii] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [timedOut, setTimedOut] = useState(false);
@@ -198,12 +199,19 @@ function QRModal({
         stopPolling();
       } else if (data.qr) {
         setQr(data.qr);
+        setQrAscii(null);
+        setQrGeneratedAt(data.generated_at ?? Date.now());
+        setQrExpired(false);
+        setError(null);
+      } else if (data.qr_ascii) {
+        setQrAscii(data.qr_ascii);
+        setQr(null);
         setQrGeneratedAt(data.generated_at ?? Date.now());
         setQrExpired(false);
         setError(null);
       } else if (data.error) {
         // Don't show "QR not available yet" as a final error — keep polling
-        if (!qr) setError(data.error);
+        if (!qr && !qrAscii) setError(data.error);
       }
     } catch {
       setError("Erro ao buscar QR code");
@@ -321,6 +329,17 @@ function QRModal({
               <div className="p-2 bg-white rounded-xl">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={qr} alt="QR Code" className="w-52 h-52 rounded-lg" />
+              </div>
+              {qrExpired && (
+                <p className="text-yellow-400 text-sm text-center mt-2">
+                  QR expirado — aguardando novo código...
+                </p>
+              )}
+            </div>
+          ) : qrAscii ? (
+            <div className="flex flex-col items-center">
+              <div className="p-1 bg-white rounded-xl overflow-hidden">
+                <pre className="text-[4.5px] leading-[5px] font-mono text-black whitespace-pre select-none">{qrAscii}</pre>
               </div>
               {qrExpired && (
                 <p className="text-yellow-400 text-sm text-center mt-2">
