@@ -20,7 +20,34 @@ interface Instance {
 }
 
 // ── Provisioning Screen ───────────────────────────────────────────────────────
-function ProvisioningScreen() {
+function ProvisioningScreen({ createdAt }: { createdAt?: string }) {
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    const start = createdAt ? new Date(createdAt).getTime() : Date.now();
+    const tick = () => setElapsed(Math.floor((Date.now() - start) / 1000));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [createdAt]);
+
+  const steps = [
+    { label: "Criando servidor", threshold: 0 },
+    { label: "Instalando dependências", threshold: 30 },
+    { label: "Instalando OpenClaw", threshold: 90 },
+    { label: "Configurando serviços", threshold: 180 },
+    { label: "Iniciando VPS Agent", threshold: 300 },
+  ];
+
+  const activeStep = steps.reduce((acc, s, i) => (elapsed >= s.threshold ? i : acc), 0);
+  const progressPercent = Math.min(95, (elapsed / 420) * 100);
+
+  const formatTime = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return m > 0 ? `${m}m ${sec.toString().padStart(2, "0")}s` : `${sec}s`;
+  };
+
   return (
     <main className="flex-1 bg-slate-950 flex flex-col items-center justify-center px-4 py-20">
       <div className="text-center max-w-md">
@@ -29,36 +56,47 @@ function ProvisioningScreen() {
         </div>
         <h1 className="text-2xl font-bold text-white mb-3">Preparando seu servidor</h1>
         <p className="text-slate-400 mb-8">
-          Estamos criando e configurando sua instância na nuvem. Isso leva entre 1 e 3 minutos.
+          Estamos criando e configurando sua instância na nuvem.
+          Isso leva entre <strong className="text-slate-300">5 e 8 minutos</strong>.
         </p>
 
-        {/* Animated progress bar */}
-        <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden mb-6">
-          <div className="h-full bg-red-500 rounded-full animate-[progress_2s_ease-in-out_infinite]" />
+        {/* Progress bar with real percentage */}
+        <div className="h-2 bg-slate-800 rounded-full overflow-hidden mb-2">
+          <div
+            className="h-full bg-gradient-to-r from-red-500 to-red-400 rounded-full transition-all duration-1000 ease-out"
+            style={{ width: `${progressPercent}%` }}
+          />
         </div>
+        <p className="text-slate-500 text-xs mb-6 text-right">
+          {formatTime(elapsed)} decorridos
+        </p>
 
         <div className="space-y-3 text-left bg-slate-900 rounded-2xl border border-slate-800 p-5">
-          {[
-            { label: "Criando servidor", done: true },
-            { label: "Instalando OpenClaw", done: true },
-            { label: "Configurando serviços", done: false },
-            { label: "Aguardando sua configuração", done: false },
-          ].map((step, i) => (
-            <div key={i} className="flex items-center gap-3">
-              {step.done ? (
-                <div className="w-5 h-5 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center flex-shrink-0">
-                  <div className="w-2 h-2 rounded-full bg-green-400" />
-                </div>
-              ) : (
-                <div className="w-5 h-5 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center flex-shrink-0">
-                  <Clock className="w-3 h-3 text-slate-500" />
-                </div>
-              )}
-              <span className={`text-sm ${step.done ? "text-slate-300" : "text-slate-500"}`}>
-                {step.label}
-              </span>
-            </div>
-          ))}
+          {steps.map((step, i) => {
+            const isDone = i < activeStep;
+            const isActive = i === activeStep;
+            return (
+              <div key={i} className="flex items-center gap-3">
+                {isDone ? (
+                  <div className="w-5 h-5 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center flex-shrink-0">
+                    <div className="w-2 h-2 rounded-full bg-green-400" />
+                  </div>
+                ) : isActive ? (
+                  <div className="w-5 h-5 rounded-full bg-red-500/20 border border-red-500/40 flex items-center justify-center flex-shrink-0">
+                    <Loader2 className="w-3 h-3 text-red-400 animate-spin" />
+                  </div>
+                ) : (
+                  <div className="w-5 h-5 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center flex-shrink-0">
+                    <Clock className="w-3 h-3 text-slate-500" />
+                  </div>
+                )}
+                <span className={`text-sm ${isDone ? "text-green-400" : isActive ? "text-white font-medium" : "text-slate-500"}`}>
+                  {step.label}
+                  {isActive && <span className="text-slate-500 ml-1">...</span>}
+                </span>
+              </div>
+            );
+          })}
         </div>
 
         <p className="text-slate-500 text-sm mt-6 flex items-center justify-center gap-2">
@@ -66,14 +104,6 @@ function ProvisioningScreen() {
           Esta página atualiza automaticamente
         </p>
       </div>
-
-      <style jsx>{`
-        @keyframes progress {
-          0% { width: 0%; margin-left: 0%; }
-          50% { width: 60%; margin-left: 20%; }
-          100% { width: 0%; margin-left: 100%; }
-        }
-      `}</style>
     </main>
   );
 }
@@ -506,7 +536,7 @@ function DashboardContent() {
     return (
       <>
         <DashboardNavbar {...navbarProps} />
-        <ProvisioningScreen />
+        <ProvisioningScreen createdAt={instance.created_at} />
       </>
     );
   }
