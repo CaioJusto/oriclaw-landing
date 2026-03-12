@@ -325,7 +325,8 @@ function DashboardContent() {
 
       // ── Route based on status ─────────────────────────────────────────────
       if (!inst) {
-        router.push("/"); // no instance — back to landing
+        // No instance yet — guide user to purchase a plan
+        router.push("/#pricing");
         return;
       }
 
