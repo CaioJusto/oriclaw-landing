@@ -8,7 +8,6 @@ import {
   Loader2,
   Save,
   RefreshCw,
-  ArrowLeft,
   Shield,
   TrendingUp,
   Users,
@@ -17,6 +16,7 @@ import {
   BarChart3,
   CheckCircle,
   XCircle,
+  LogOut,
 } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
@@ -100,7 +100,7 @@ function aiModeLabel(mode: string): string {
     case "credits": return "Creditos OriClaw";
     case "byok": return "BYOK";
     case "chatgpt": return "ChatGPT";
-    default: return mode || "—";
+    default: return mode || "\u2014";
   }
 }
 
@@ -108,8 +108,10 @@ function aiModeLabel(mode: string): string {
 export default function AdminPage() {
   const router = useRouter();
   const [token, setToken] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"settings" | "usage" | "instances">("settings");
 
   // Settings state
@@ -127,16 +129,42 @@ export default function AdminPage() {
   // Instances state
   const [instances, setInstances] = useState<AdminInstance[]>([]);
 
-  // ── Auth ──────────────────────────────────────────────────────────────────
+  // ── Auth — session check + listener ────────────────────────────────────────
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        router.push("/login");
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT") {
+        router.replace("/login?next=/admin");
+      } else if (event === "TOKEN_REFRESHED" && session) {
+        setToken(session.access_token);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [router]);
+
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.replace("/login?next=/admin");
         return;
       }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.replace("/login?next=/admin");
+        return;
+      }
+      setUserEmail(session.user.email ?? null);
       setToken(session.access_token);
-    });
+    })();
   }, [router]);
+
+  // ── Logout ─────────────────────────────────────────────────────────────────
+  const handleLogout = async () => {
+    if (logoutLoading) return;
+    setLogoutLoading(true);
+    await supabase.auth.signOut();
+    router.replace("/login?next=/admin");
+  };
 
   // ── API helper ────────────────────────────────────────────────────────────
   const adminFetch = useCallback(
@@ -211,17 +239,41 @@ export default function AdminPage() {
     setTimeout(() => setSettingsSaved(false), 3000);
   };
 
-  // ── Forbidden ─────────────────────────────────────────────────────────────
+  // ── Forbidden — not superadmin ─────────────────────────────────────────────
   if (forbidden) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <Shield className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-white mb-2">Acesso Restrito</h1>
-          <p className="text-slate-400 mb-6">Apenas o superadmin pode acessar esta pagina.</p>
-          <Link href="/dashboard" className="text-red-400 hover:text-red-300 underline">
-            Voltar ao Dashboard
-          </Link>
+      <div className="min-h-screen bg-slate-950">
+        {/* Navbar even on forbidden — so user can logout */}
+        <nav className="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-2">
+              <span className="text-xl">🦀</span>
+              <span className="text-white font-bold text-lg">OriClaw</span>
+            </Link>
+            <div className="flex items-center gap-3">
+              {userEmail && (
+                <span className="text-slate-400 text-sm hidden sm:block">{userEmail}</span>
+              )}
+              <button
+                onClick={handleLogout}
+                disabled={logoutLoading}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-300 text-sm transition-colors"
+              >
+                {logoutLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
+                <span className="hidden sm:block">Sair</span>
+              </button>
+            </div>
+          </div>
+        </nav>
+        <div className="flex items-center justify-center" style={{ minHeight: "calc(100vh - 4rem)" }}>
+          <div className="text-center">
+            <Shield className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold text-white mb-2">Acesso Restrito</h1>
+            <p className="text-slate-400 mb-6">Apenas o superadmin pode acessar esta pagina.</p>
+            <Link href="/dashboard" className="text-red-400 hover:text-red-300 underline">
+              Voltar ao Dashboard
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -230,7 +282,7 @@ export default function AdminPage() {
   // ── Loading ───────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-red-500 animate-spin" />
       </div>
     );
@@ -243,27 +295,42 @@ export default function AdminPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      {/* Header */}
-      <header className="border-b border-slate-800 bg-black/80 backdrop-blur-sm sticky top-0 z-50">
+    <div className="min-h-screen bg-slate-950 text-white">
+      {/* Navbar — same style as dashboard */}
+      <nav className="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/dashboard" className="text-slate-400 hover:text-white transition-colors">
-              <ArrowLeft className="w-5 h-5" />
+          <div className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-2">
+              <span className="text-xl">🦀</span>
+              <span className="text-white font-bold text-lg">OriClaw</span>
             </Link>
-            <div className="flex items-center gap-2">
-              <Shield className="w-5 h-5 text-red-500" />
-              <h1 className="text-lg font-semibold">Painel Superadmin</h1>
+            <span className="text-slate-600">|</span>
+            <div className="flex items-center gap-1.5">
+              <Shield className="w-4 h-4 text-red-500" />
+              <span className="text-sm font-semibold text-red-400">Admin</span>
             </div>
           </div>
-          <Link
-            href="/dashboard"
-            className="text-sm text-slate-400 hover:text-white transition-colors"
-          >
-            Voltar ao Dashboard
-          </Link>
+          <div className="flex items-center gap-3">
+            {userEmail && (
+              <span className="text-slate-400 text-sm hidden sm:block">{userEmail}</span>
+            )}
+            <Link
+              href="/dashboard"
+              className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm transition-colors hidden sm:block"
+            >
+              Dashboard
+            </Link>
+            <button
+              onClick={handleLogout}
+              disabled={logoutLoading}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-300 text-sm transition-colors"
+            >
+              {logoutLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
+              <span className="hidden sm:block">Sair</span>
+            </button>
+          </div>
         </div>
-      </header>
+      </nav>
 
       {/* Tabs */}
       <div className="border-b border-slate-800">
@@ -592,7 +659,7 @@ export default function AdminPage() {
                   <tbody>
                     {instances.map((inst) => (
                       <tr key={inst.id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
-                        <td className="px-4 py-3">{inst.email || "—"}</td>
+                        <td className="px-4 py-3">{inst.email || "\u2014"}</td>
                         <td className={`px-4 py-3 font-medium ${statusColor(inst.status)}`}>
                           {inst.status}
                         </td>
@@ -602,7 +669,7 @@ export default function AdminPage() {
                           {formatBRL(inst.balance_brl)}
                         </td>
                         <td className="px-4 py-3 font-mono text-xs text-slate-400">
-                          {inst.droplet_ip || "—"}
+                          {inst.droplet_ip || "\u2014"}
                         </td>
                         <td className="px-4 py-3 text-slate-400 text-xs">
                           {new Date(inst.created_at).toLocaleDateString("pt-BR")}
