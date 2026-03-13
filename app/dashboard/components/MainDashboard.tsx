@@ -1084,8 +1084,20 @@ function ConfigModal({
   const [error, setError] = useState<string | null>(null);
 
   const modelOptions = {
-    anthropic: ["claude-sonnet-4-5", "claude-3-5-haiku-latest", "claude-opus-4"],
-    openai: ["gpt-4o", "gpt-4o-mini"],
+    anthropic: [
+      "claude-opus-4.6",
+      "claude-sonnet-4.6",
+    ],
+    openai: [
+      "gpt-5.4-pro",
+      "gpt-5.4",
+      "gpt-5.3-codex",
+      "gpt-5.3-chat",
+      "gpt-5.2-pro",
+      "gpt-5.2",
+      "gpt-5.2-codex",
+      "gpt-5.2-chat",
+    ],
   };
 
   const handleSave = async () => {

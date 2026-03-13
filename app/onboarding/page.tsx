@@ -83,17 +83,17 @@ const BYOK_PROVIDERS: {
     company: "Anthropic",
     placeholder: "sk-ant-api03-...",
     keyHint: "Começa com sk-ant-",
-    model: "claude-sonnet-4-5",
+    model: "claude-sonnet-4.6",
     howToGet: "Acesse console.anthropic.com → API Keys → Create Key",
     link: "https://console.anthropic.com/settings/keys",
   },
   {
     id: "openai",
-    label: "GPT-4",
+    label: "GPT-5",
     company: "OpenAI",
     placeholder: "sk-proj-...",
     keyHint: "Começa com sk-",
-    model: "gpt-4o",
+    model: "gpt-5.4",
     howToGet: "Acesse platform.openai.com → API Keys → Create new secret key",
     link: "https://platform.openai.com/api-keys",
   },
@@ -103,7 +103,7 @@ const BYOK_PROVIDERS: {
     company: "Google",
     placeholder: "AIza...",
     keyHint: "Começa com AIza",
-    model: "gemini-1.5-pro",
+    model: "gemini-3.1-pro-preview",
     howToGet: "Acesse aistudio.google.com → Obter chave de API",
     link: "https://aistudio.google.com/app/apikey",
   },
@@ -113,7 +113,7 @@ const BYOK_PROVIDERS: {
     company: "OpenRouter",
     placeholder: "sk-or-v1-...",
     keyHint: "Começa com sk-or-v1-",
-    model: "openai/gpt-4o",
+    model: "openai/gpt-5.4",
     howToGet: "Acesse openrouter.ai → Keys → Create Key",
     link: "https://openrouter.ai/keys",
   },
@@ -560,10 +560,10 @@ export default function OnboardingPage() {
         else if (byokProvider === "openrouter") body.openrouter_key = apiKey;
       } else if (aiMode === "credits") {
         body.credits_mode = true;
-        body.model = "claude-3-5-haiku-latest";
+        body.model = "claude-sonnet-4.6";
       } else if (aiMode === "chatgpt") {
         body.chatgpt_mode = true;
-        body.model = "gpt-4o";
+        body.model = "gpt-5.4";
       }
 
       const result = await proxyCall("POST", instance.id, "configure", body, token);
