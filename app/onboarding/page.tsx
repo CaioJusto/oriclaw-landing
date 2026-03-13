@@ -34,6 +34,13 @@ interface Instance {
   metadata?: Record<string, unknown>;
 }
 
+type OpenAIStatus = {
+  connected: boolean;
+  key_saved: boolean;
+  validation_status: string | null;
+  warning?: string | null;
+};
+
 // ── Channel options ──────────────────────────────────────────────────────────
 const CHANNELS = [
   {
@@ -181,16 +188,21 @@ function OpenAIConnectButton({
   instanceId,
   token,
   connected,
-  onConnected,
+  keySaved,
+  validationStatus,
+  onStatusChange,
 }: {
   instanceId: string;
   token: string;
   connected: boolean;
-  onConnected: () => void;
+  keySaved: boolean;
+  validationStatus: string | null;
+  onStatusChange: (status: OpenAIStatus) => void;
 }) {
   const [openaiApiKey, setOpenaiApiKey] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const handleSaveOpenAIKey = async () => {
     if (!openaiApiKey.startsWith("sk-") || openaiApiKey.length < 20) {
@@ -199,6 +211,7 @@ function OpenAIConnectButton({
     }
     setLoading(true);
     setError(null);
+    setNotice(null);
     try {
       const res = await fetch("/api/auth/openai/key", {
         method: "POST",
@@ -210,7 +223,18 @@ function OpenAIConnectButton({
       });
       const data = await res.json();
       if (data.error) throw new Error(String(data.error));
-      onConnected();
+      const status: OpenAIStatus = {
+        connected: !!data.connected,
+        key_saved: !!data.key_saved,
+        validation_status: data.validation_status ?? null,
+        warning: data.warning ?? null,
+      };
+      onStatusChange(status);
+      if (status.warning) {
+        setNotice("Chave salva, mas a validação externa não respondeu. Você ainda pode continuar e finalizar a configuração.");
+      } else {
+        setOpenaiApiKey("");
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Falha ao salvar chave OpenAI");
     } finally {
@@ -232,6 +256,20 @@ function OpenAIConnectButton({
 
   return (
     <div className="space-y-3">
+      {keySaved && (
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
+          <AlertCircle className="w-5 h-5 text-amber-300 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-amber-200 font-medium text-sm">
+              Credencial salva
+              {validationStatus === "saved_unverified" ? " com verificação pendente" : ""}
+            </p>
+            <p className="text-amber-100/80 text-xs">
+              Você pode continuar. Se quiser substituir a chave, salve outra abaixo.
+            </p>
+          </div>
+        </div>
+      )}
       <div className="p-3 rounded-xl bg-slate-800/60 border border-slate-700 text-xs text-slate-400">
         Cole sua OpenAI API Key abaixo. Encontre em{" "}
         <a
@@ -253,6 +291,11 @@ function OpenAIConnectButton({
       {error && (
         <p className="text-red-400 text-xs flex items-center gap-1">
           <AlertCircle className="w-3 h-3" /> {error}
+        </p>
+      )}
+      {notice && (
+        <p className="text-amber-300 text-xs flex items-center gap-1">
+          <AlertCircle className="w-3 h-3" /> {notice}
         </p>
       )}
       <button
@@ -380,6 +423,8 @@ export default function OnboardingPage() {
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   // ChatGPT Plus sub-state
   const [chatgptConnected, setChatgptConnected] = useState(false);
+  const [chatgptKeySaved, setChatgptKeySaved] = useState(false);
+  const [chatgptValidationStatus, setChatgptValidationStatus] = useState<string | null>(null);
 
   const [assistantName, setAssistantName] = useState("Ori");
   const [personality, setPersonality] = useState("");
@@ -413,6 +458,21 @@ export default function OnboardingPage() {
 
   const qrIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const syncOpenAIStatus = useCallback(async (instanceId: string, accessToken: string) => {
+    try {
+      const res = await fetch(`/api/auth/openai/status/${instanceId}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!res.ok) return;
+      const data = await res.json() as OpenAIStatus;
+      setChatgptConnected(!!data.connected);
+      setChatgptKeySaved(!!data.key_saved);
+      setChatgptValidationStatus(data.validation_status ?? null);
+    } catch {
+      // keep existing local state
+    }
+  }, []);
+
   // ── Auth check + instance fetch ────────────────────────────────────────────
   useEffect(() => {
     (async () => {
@@ -432,6 +492,9 @@ export default function OnboardingPage() {
           setInstance(inst);
           if (inst.status === "running") { router.push("/dashboard"); return; }
           if (inst.metadata?.chatgpt_connected) setChatgptConnected(true);
+          if (inst.id) {
+            await syncOpenAIStatus(inst.id, session.access_token);
+          }
 
           // Restore saved onboarding step
           if (inst.id) {
@@ -454,6 +517,7 @@ export default function OnboardingPage() {
                 if (r2.ok) {
                   const updated = await r2.json() as Instance;
                   setInstance(updated);
+                  await syncOpenAIStatus(updated.id, session.access_token);
                   if (updated.status !== "provisioning") {
                     if (provisioningPollRef.current) clearInterval(provisioningPollRef.current);
                     if (updated.status === 'suspended' || updated.status === 'deletion_failed') {
@@ -480,7 +544,7 @@ export default function OnboardingPage() {
     })();
 
     return () => { if (provisioningPollRef.current) clearInterval(provisioningPollRef.current); };
-  }, [router]);
+  }, [router, syncOpenAIStatus]);
 
   // ── Fetch credit balance when credits mode selected ────────────────────────
   useEffect(() => {
@@ -627,7 +691,7 @@ export default function OnboardingPage() {
       return key.startsWith(prefixes[byokProvider]);
     }
     if (aiMode === "credits") return creditBalance > 0;
-    if (aiMode === "chatgpt") return chatgptConnected;
+    if (aiMode === "chatgpt") return chatgptConnected || chatgptKeySaved;
     return false;
   };
 
@@ -926,9 +990,15 @@ export default function OnboardingPage() {
                       instanceId={instance.id}
                       token={token}
                       connected={chatgptConnected}
-                      onConnected={() => setChatgptConnected(true)}
+                      keySaved={chatgptKeySaved}
+                      validationStatus={chatgptValidationStatus}
+                      onStatusChange={(status) => {
+                        setChatgptConnected(status.connected);
+                        setChatgptKeySaved(status.key_saved);
+                        setChatgptValidationStatus(status.validation_status);
+                      }}
                     />
-                    {!chatgptConnected && (
+                    {!chatgptConnected && !chatgptKeySaved && (
                       <p className="text-slate-500 text-xs text-center">
                         Requer plano pago na OpenAI. Uma janela de autorização será aberta.
                       </p>

@@ -68,6 +68,13 @@ interface ChannelsData {
   discord: { status: ChannelStatus; guild: string | null };
 }
 
+type OpenAIStatus = {
+  connected: boolean;
+  key_saved: boolean;
+  validation_status: string | null;
+  warning?: string | null;
+};
+
 interface Props {
   instance: Instance;
   userEmail: string;
@@ -587,17 +594,22 @@ function ChatGPTConnectSection({
   instanceId,
   token,
   connected,
-  onConnected,
+  keySaved,
+  validationStatus,
+  onStatusChange,
 }: {
   instanceId: string;
   token: string;
   connected: boolean;
-  onConnected: () => void;
+  keySaved: boolean;
+  validationStatus: string | null;
+  onStatusChange: (status: OpenAIStatus) => void;
 }) {
   const [mode, setMode] = useState<"oauth" | "apikey">("oauth");
   const [apiKey, setApiKey] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   // OAuth Codex flow
   const handleCodexOAuth = async () => {
@@ -631,6 +643,7 @@ function ChatGPTConnectSection({
     }
     setLoading(true);
     setError(null);
+    setNotice(null);
     try {
       const res = await fetch("/api/auth/openai/key", {
         method: "POST",
@@ -642,7 +655,18 @@ function ChatGPTConnectSection({
       });
       const data = await res.json();
       if (data.error) throw new Error(String(data.error));
-      onConnected();
+      const status: OpenAIStatus = {
+        connected: !!data.connected,
+        key_saved: !!data.key_saved,
+        validation_status: data.validation_status ?? null,
+        warning: data.warning ?? null,
+      };
+      onStatusChange(status);
+      if (status.warning) {
+        setNotice("Chave salva, mas a validacao externa nao respondeu. Voce ainda pode continuar e salvar a configuracao.");
+      } else {
+        setApiKey("");
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Falha ao salvar chave OpenAI");
     } finally {
@@ -661,6 +685,20 @@ function ChatGPTConnectSection({
 
   return (
     <div className="space-y-3">
+      {keySaved && (
+        <div className="flex items-start gap-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
+          <AlertCircle className="w-4 h-4 text-amber-300 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-amber-200 text-sm font-medium">
+              Credencial salva
+              {validationStatus === "saved_unverified" ? " com verificacao pendente" : ""}
+            </p>
+            <p className="text-amber-100/80 text-xs">
+              Pode continuar com a configuracao ou salvar outra chave para substituir.
+            </p>
+          </div>
+        </div>
+      )}
       {/* Mode toggle */}
       <div className="flex gap-2">
         <button
@@ -726,6 +764,11 @@ function ChatGPTConnectSection({
       {error && (
         <p className="text-red-400 text-xs flex items-center gap-1">
           <AlertCircle className="w-3 h-3" /> {error}
+        </p>
+      )}
+      {notice && (
+        <p className="text-amber-300 text-xs flex items-center gap-1">
+          <AlertCircle className="w-3 h-3" /> {notice}
         </p>
       )}
     </div>
@@ -1077,6 +1120,10 @@ function ConfigModal({
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState("");
   const [chatgptConnected, setChatgptConnected] = useState(currentAiMode === "chatgpt");
+  const [chatgptKeySaved, setChatgptKeySaved] = useState(currentAiMode === "chatgpt");
+  const [chatgptValidationStatus, setChatgptValidationStatus] = useState<string | null>(
+    currentAiMode === "chatgpt" ? "verified" : null
+  );
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1106,6 +1153,29 @@ function ConfigModal({
       "o3",
     ],
   };
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/auth/openai/status/${instanceId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json() as OpenAIStatus;
+        if (cancelled) return;
+        setChatgptConnected(!!data.connected);
+        setChatgptKeySaved(!!data.key_saved);
+        setChatgptValidationStatus(data.validation_status ?? null);
+      } catch {
+        // keep current optimistic state
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [instanceId, token]);
 
   const handleSave = async () => {
     setLoading(true);
@@ -1242,7 +1312,13 @@ function ConfigModal({
                 instanceId={instanceId}
                 token={token}
                 connected={chatgptConnected}
-                onConnected={() => setChatgptConnected(true)}
+                keySaved={chatgptKeySaved}
+                validationStatus={chatgptValidationStatus}
+                onStatusChange={(status) => {
+                  setChatgptConnected(status.connected);
+                  setChatgptKeySaved(status.key_saved);
+                  setChatgptValidationStatus(status.validation_status);
+                }}
               />
             </div>
           )}
@@ -1256,7 +1332,7 @@ function ConfigModal({
 
         <button
           onClick={handleSave}
-          disabled={loading || success || (tab === "chatgpt" && !chatgptConnected)}
+          disabled={loading || success || (tab === "chatgpt" && !chatgptConnected && !chatgptKeySaved)}
           className="w-full mt-5 py-3 rounded-xl bg-red-500 hover:bg-red-400 disabled:opacity-60 text-white font-semibold flex items-center justify-center gap-2 transition-all"
         >
           {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</>
