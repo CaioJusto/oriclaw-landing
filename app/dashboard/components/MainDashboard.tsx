@@ -584,10 +584,8 @@ function DiscordModal({
   );
 }
 
-// ── OpenAI API Key Input (Bug fix #2: replaced OAuth flow with BYOK API key) ───
-// OpenAI does NOT offer public OAuth for ChatGPT Plus. This component replaces
-// the non-functional OAuth button with a simple API key input field.
-function OpenAIConnectButton({
+// ── ChatGPT Connection — OAuth Codex + API Key fallback ──────────────────────
+function ChatGPTConnectSection({
   instanceId,
   token,
   connected,
@@ -598,13 +596,39 @@ function OpenAIConnectButton({
   connected: boolean;
   onConnected: () => void;
 }) {
+  const [mode, setMode] = useState<"oauth" | "apikey">("oauth");
   const [apiKey, setApiKey] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // OAuth Codex flow
+  const handleCodexOAuth = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/auth/openai-codex/init", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(String(data.error));
+      if (data.auth_url) {
+        window.open(data.auth_url, "_blank", "width=600,height=700");
+      }
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Falha ao iniciar OAuth");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // API Key fallback
   const handleSaveKey = async () => {
     if (!apiKey.startsWith("sk-") || apiKey.length < 20) {
-      setError('Chave inválida. Deve começar com "sk-".');
+      setError('Chave invalida. Deve comecar com "sk-".');
       return;
     }
     setLoading(true);
@@ -632,44 +656,80 @@ function OpenAIConnectButton({
     return (
       <div className="flex items-center gap-3 p-3 rounded-xl bg-green-500/10 border border-green-500/30">
         <CheckCircle className="w-4 h-4 text-green-400" />
-        <span className="text-green-400 text-sm font-medium">OpenAI API Key configurada ✅</span>
+        <span className="text-green-400 text-sm font-medium">ChatGPT conectado</span>
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
-      <div className="p-3 rounded-xl bg-slate-800/60 border border-slate-700 text-xs text-slate-400">
-        Cole sua OpenAI API Key abaixo. Encontre em{" "}
-        <a
-          href="https://platform.openai.com/api-keys"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-red-400 hover:text-red-300 underline"
+      {/* Mode toggle */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => { setMode("oauth"); setError(null); }}
+          className={`flex-1 py-2 px-3 rounded-xl text-xs font-medium transition-all border ${
+            mode === "oauth"
+              ? "bg-red-500/20 border-red-400 text-red-300"
+              : "bg-slate-800 border-slate-700 text-slate-400 hover:text-white"
+          }`}
         >
-          platform.openai.com/api-keys
-        </a>
+          Subscription ChatGPT
+        </button>
+        <button
+          onClick={() => { setMode("apikey"); setError(null); }}
+          className={`flex-1 py-2 px-3 rounded-xl text-xs font-medium transition-all border ${
+            mode === "apikey"
+              ? "bg-red-500/20 border-red-400 text-red-300"
+              : "bg-slate-800 border-slate-700 text-slate-400 hover:text-white"
+          }`}
+        >
+          API Key (fallback)
+        </button>
       </div>
-      <input
-        type="password"
-        value={apiKey}
-        onChange={(e) => setApiKey(e.target.value)}
-        placeholder="sk-..."
-        className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-400/50"
-      />
+
+      {mode === "oauth" ? (
+        <>
+          <div className="p-3 rounded-xl bg-slate-800/60 border border-slate-700 text-xs text-slate-400">
+            Use sua assinatura do ChatGPT/Pro. Sem custo adicional de API.
+            Voce sera redirecionado para autenticar com sua conta OpenAI.
+          </div>
+          <button
+            onClick={handleCodexOAuth}
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-red-500 hover:bg-red-400 disabled:opacity-60 text-white font-semibold text-sm transition-all"
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+            Conectar com ChatGPT
+          </button>
+        </>
+      ) : (
+        <>
+          <div className="p-3 rounded-xl bg-slate-800/60 border border-slate-700 text-xs text-slate-400">
+            Cole sua OpenAI API Key como alternativa.
+          </div>
+          <input
+            type="password"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder="sk-..."
+            className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-400/50"
+          />
+          <button
+            onClick={handleSaveKey}
+            disabled={loading || !apiKey}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-red-500 hover:bg-red-400 disabled:opacity-60 text-white font-semibold text-sm transition-all"
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            Salvar API Key
+          </button>
+        </>
+      )}
+
       {error && (
         <p className="text-red-400 text-xs flex items-center gap-1">
           <AlertCircle className="w-3 h-3" /> {error}
         </p>
       )}
-      <button
-        onClick={handleSaveKey}
-        disabled={loading || !apiKey}
-        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-red-500 hover:bg-red-400 disabled:opacity-60 text-white font-semibold text-sm transition-all"
-      >
-        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-        Salvar API Key
-      </button>
     </div>
   );
 }
@@ -1059,7 +1119,7 @@ function ConfigModal({
   const tabs = [
     { id: "byok" as const, label: "Chave de API", icon: Key },
     { id: "credits" as const, label: "Créditos OriClaw", icon: CreditCard },
-    { id: "chatgpt" as const, label: "ChatGPT Plus", icon: Zap },
+    { id: "chatgpt" as const, label: "ChatGPT", icon: Zap },
   ];
 
   return (
@@ -1156,10 +1216,10 @@ function ConfigModal({
             </div>
           )}
 
-          {/* ChatGPT / OpenAI API Key tab (Bug fix #2: replaced OAuth with API key input) */}
+          {/* ChatGPT — OAuth Codex + API Key fallback */}
           {tab === "chatgpt" && (
             <div className="space-y-3">
-              <OpenAIConnectButton
+              <ChatGPTConnectSection
                 instanceId={instanceId}
                 token={token}
                 connected={chatgptConnected}
@@ -1292,7 +1352,7 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
   const aiMode = (instance.metadata?.ai_mode as string | undefined) ?? "byok";
   const isCreditsMode = aiMode === "credits";
   const modelLabel = (instance.metadata?.model as string | undefined) ?? (
-    aiMode === "credits" ? "OpenRouter" : aiMode === "chatgpt" ? "ChatGPT Plus" : "Claude"
+    aiMode === "credits" ? "OpenRouter" : aiMode === "chatgpt" ? "ChatGPT" : "Claude"
   );
 
   // ── Fetchers ───────────────────────────────────────────────────────────────
@@ -1716,7 +1776,7 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 text-sm">Modo</span>
                 <span className="text-white text-sm font-medium capitalize">
-                  {aiMode === "byok" ? "Chave própria" : aiMode === "credits" ? "Créditos OriClaw" : "ChatGPT Plus"}
+                  {aiMode === "byok" ? "Chave própria" : aiMode === "credits" ? "Créditos OriClaw" : "ChatGPT"}
                 </span>
               </div>
               <div className="flex items-center justify-between">
