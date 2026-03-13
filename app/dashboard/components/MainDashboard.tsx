@@ -1462,7 +1462,16 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
             <span className="text-slate-400 text-sm hidden sm:block">{userEmail}</span>
             {chatUrlData?.available && !chatFullscreen && (
               <button
-                onClick={() => setChatFullscreen(true)}
+                onClick={() => {
+                  setChatFullscreen(true);
+                  // Pre-approve device pairing before iframe loads
+                  const approve = () => proxyCall("POST", instance.id, "chat-approve", token).catch(() => {});
+                  approve();
+                  setTimeout(approve, 2000);
+                  setTimeout(approve, 5000);
+                  setTimeout(approve, 10000);
+                  setTimeout(approve, 15000);
+                }}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-500/20 border border-green-500/30 hover:bg-green-500/30 text-green-400 text-sm transition-colors"
               >
                 <MessageCircle className="w-4 h-4" />
@@ -1521,9 +1530,11 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
             className="flex-1 w-full bg-black"
             allow="clipboard-write"
             onLoad={() => {
-              proxyCall("POST", instance.id, "chat-approve", token).catch(() => {});
-              setTimeout(() => proxyCall("POST", instance.id, "chat-approve", token).catch(() => {}), 3000);
-              setTimeout(() => proxyCall("POST", instance.id, "chat-approve", token).catch(() => {}), 8000);
+              const approve = () => proxyCall("POST", instance.id, "chat-approve", token).catch(() => {});
+              approve();
+              setTimeout(approve, 2000);
+              setTimeout(approve, 5000);
+              setTimeout(approve, 10000);
             }}
           />
         </div>
