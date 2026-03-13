@@ -23,6 +23,7 @@ import {
   Key,
 
   Trash2,
+  ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
@@ -1277,6 +1278,7 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
   const [showPersona, setShowPersona] = useState(false);
   const [showPurchase, setShowPurchase] = useState(false);
   const [pollingPaused, setPollingPaused] = useState(false);
+  const [chatFullscreen, setChatFullscreen] = useState(false);
 
   const [restarting, setRestarting] = useState(false);
   const [restartConfirm, setRestartConfirm] = useState(false);
@@ -1458,6 +1460,15 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
           </Link>
           <div className="flex items-center gap-3">
             <span className="text-slate-400 text-sm hidden sm:block">{userEmail}</span>
+            {chatUrlData?.available && !chatFullscreen && (
+              <button
+                onClick={() => setChatFullscreen(true)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-500/20 border border-green-500/30 hover:bg-green-500/30 text-green-400 text-sm transition-colors"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span className="hidden sm:block">Abrir Chat</span>
+              </button>
+            )}
             {onBillingPortal && (
               <button
                 onClick={onBillingPortal}
@@ -1488,6 +1499,35 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
           </div>
         </div>
       </nav>
+
+      {/* ── Chat Fullscreen View ── */}
+      {chatFullscreen && chatUrlData?.available ? (
+        <div className="flex flex-col" style={{ height: "calc(100vh - 4rem)" }}>
+          <div className="flex items-center gap-3 px-4 py-3 bg-slate-900 border-b border-slate-800">
+            <button
+              onClick={() => setChatFullscreen(false)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Voltar ao Painel
+            </button>
+            <div className="flex items-center gap-2 ml-auto">
+              <MessageCircle className="w-4 h-4 text-green-400" />
+              <span className="text-white text-sm font-medium">Chat com seu assistente</span>
+            </div>
+          </div>
+          <iframe
+            src={chatUrlData.url}
+            className="flex-1 w-full bg-black"
+            allow="clipboard-write"
+            onLoad={() => {
+              proxyCall("POST", instance.id, "chat-approve", token).catch(() => {});
+              setTimeout(() => proxyCall("POST", instance.id, "chat-approve", token).catch(() => {}), 3000);
+              setTimeout(() => proxyCall("POST", instance.id, "chat-approve", token).catch(() => {}), 8000);
+            }}
+          />
+        </div>
+      ) : (
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
 
@@ -1783,46 +1823,6 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
           )}
         </div>
 
-        {/* ── Chat Direto ── */}
-        <div className="bg-slate-900 rounded-2xl border border-slate-800 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <MessageCircle className="w-4 h-4 text-slate-400" />
-              <h2 className="text-white font-semibold">💬 Chat com seu assistente</h2>
-            </div>
-            {chatUrlData?.available && (
-              <a
-                href={chatUrlData.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
-              >
-                Abrir em nova aba
-              </a>
-            )}
-          </div>
-
-          {chatUrlData?.available ? (
-            <iframe
-              src={chatUrlData.url}
-              className="w-full rounded-xl border border-slate-700 bg-black"
-              style={{ height: "600px" }}
-              allow="clipboard-write"
-              onLoad={() => {
-                // Auto-approve device pairing when iframe loads
-                proxyCall("POST", instance.id, "chat-approve", token).catch(() => {});
-                setTimeout(() => proxyCall("POST", instance.id, "chat-approve", token).catch(() => {}), 3000);
-                setTimeout(() => proxyCall("POST", instance.id, "chat-approve", token).catch(() => {}), 8000);
-              }}
-            />
-          ) : (
-            <div className="flex items-center gap-3 p-4 rounded-xl bg-slate-800/50 border border-slate-700 text-slate-400 text-sm">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              Interface de chat não disponível. Inicie o assistente primeiro.
-            </div>
-          )}
-        </div>
-
         {/* ── Instance info ── */}
         <div className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
           <button
@@ -1862,6 +1862,8 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
           )}
         </div>
       </div>
+
+      )}
 
       {/* ── Restart confirm dialog ── */}
       {restartConfirm && (
