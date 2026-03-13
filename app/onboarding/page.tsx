@@ -626,7 +626,7 @@ export default function OnboardingPage() {
       };
       return key.startsWith(prefixes[byokProvider]);
     }
-    if (aiMode === "credits") return true; // can proceed with R$0
+    if (aiMode === "credits") return creditBalance > 0;
     if (aiMode === "chatgpt") return chatgptConnected;
     return false;
   };
@@ -881,9 +881,15 @@ export default function OnboardingPage() {
                     >
                       Comprar créditos agora
                     </button>
-                    <p className="text-slate-500 text-xs text-center">
-                      Você pode comprar créditos agora ou depois no painel. Não expiram.
-                    </p>
+                    {creditBalance > 0 ? (
+                      <p className="text-emerald-400 text-xs text-center">
+                        Saldo confirmado. Você pode continuar a configuração.
+                      </p>
+                    ) : (
+                      <p className="text-amber-300 text-xs text-center">
+                        Adicione créditos para concluir a configuração em modo OriClaw.
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

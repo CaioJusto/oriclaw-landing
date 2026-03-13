@@ -23,7 +23,6 @@ import {
   Key,
 
   Trash2,
-  ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
@@ -59,7 +58,6 @@ interface DetailedHealthData {
 interface ChatUrlData {
   url: string;
   available: boolean;
-  token?: string;
 }
 
 type ChannelStatus = "connected" | "disconnected" | "not_configured" | "configured";
@@ -218,7 +216,7 @@ function QRModal({
     } catch {
       setError("Erro ao buscar QR code");
     }
-  }, [instanceId, token, stopPolling, qr]);
+  }, [instanceId, token, stopPolling, qr, qrAscii]);
 
   const startPolling = useCallback(() => {
     qrDashboardAttemptsRef.current = 0;
@@ -1359,7 +1357,6 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
   const [showPersona, setShowPersona] = useState(false);
   const [showPurchase, setShowPurchase] = useState(false);
   const [pollingPaused, setPollingPaused] = useState(false);
-  const [chatFullscreen, setChatFullscreen] = useState(false);
 
   const [restarting, setRestarting] = useState(false);
   const [restartConfirm, setRestartConfirm] = useState(false);
@@ -1411,7 +1408,7 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
   const fetchChatUrl = useCallback(async () => {
     try {
       const data = await proxyCall("GET", instance.id, "chat-url", token);
-      if (!data.error) setChatUrlData(data as ChatUrlData);
+      if (!data.error && data?.url) setChatUrlData(data as ChatUrlData);
     } catch { /* ignore */ }
   }, [instance.id, token]);
 
@@ -1473,14 +1470,26 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
 
   useEffect(() => {
     fetchChatUrl();
-    fetchCredits();
     restartHealthPolling();
 
     return () => {
       pollingStoppedRef.current = true;
       clearPollingTimer();
     };
-  }, [fetchChatUrl, fetchCredits, restartHealthPolling, clearPollingTimer]);
+  }, [fetchChatUrl, restartHealthPolling, clearPollingTimer]);
+
+  useEffect(() => {
+    if (!isCreditsMode) return;
+
+    fetchCredits();
+    const interval = setInterval(fetchCredits, 15_000);
+    return () => clearInterval(interval);
+  }, [fetchCredits, isCreditsMode]);
+
+  useEffect(() => {
+    const interval = setInterval(fetchChatUrl, 15_000);
+    return () => clearInterval(interval);
+  }, [fetchChatUrl]);
 
   // ── Disconnect channel ─────────────────────────────────────────────────────
   const disconnectChannel = async (ch: string) => {
@@ -1530,6 +1539,27 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
 
   const isOnline = health?.openclaw === "running";
 
+  const openChatWindow = useCallback(() => {
+    if (!chatUrlData?.url) return;
+
+    let attempts = 0;
+    const maxAttempts = 30;
+    const approve = () => {
+      attempts += 1;
+      void proxyCall("POST", instance.id, "chat-approve", token).catch(() => {});
+      if (attempts >= maxAttempts) window.clearInterval(interval);
+    };
+    approve();
+    const interval = window.setInterval(approve, 2_000);
+    window.setTimeout(() => window.clearInterval(interval), 60_000);
+
+    const link = document.createElement("a");
+    link.href = chatUrlData.url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.click();
+  }, [chatUrlData?.url, instance.id, token]);
+
   return (
     <>
       {/* ── Navbar ── */}
@@ -1541,19 +1571,11 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
           </Link>
           <div className="flex items-center gap-3">
             <span className="text-slate-400 text-sm hidden sm:block">{userEmail}</span>
-            {chatUrlData?.available && !chatFullscreen && (
+            {chatUrlData?.url && (
               <button
-                onClick={() => {
-                  setChatFullscreen(true);
-                  // Pre-approve device pairing before iframe loads
-                  const approve = () => proxyCall("POST", instance.id, "chat-approve", token).catch(() => {});
-                  approve();
-                  setTimeout(approve, 2000);
-                  setTimeout(approve, 5000);
-                  setTimeout(approve, 10000);
-                  setTimeout(approve, 15000);
-                }}
+                onClick={openChatWindow}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-500/20 border border-green-500/30 hover:bg-green-500/30 text-green-400 text-sm transition-colors"
+                title="Abrir o Control UI em nova aba"
               >
                 <MessageCircle className="w-4 h-4" />
                 <span className="hidden sm:block">Abrir Chat</span>
@@ -1589,37 +1611,6 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
           </div>
         </div>
       </nav>
-
-      {/* ── Chat Fullscreen View ── */}
-      {chatFullscreen && chatUrlData?.available ? (
-        <div className="flex flex-col" style={{ height: "calc(100vh - 4rem)" }}>
-          <div className="flex items-center gap-3 px-4 py-3 bg-slate-900 border-b border-slate-800">
-            <button
-              onClick={() => setChatFullscreen(false)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Voltar ao Painel
-            </button>
-            <div className="flex items-center gap-2 ml-auto">
-              <MessageCircle className="w-4 h-4 text-green-400" />
-              <span className="text-white text-sm font-medium">Chat com seu assistente</span>
-            </div>
-          </div>
-          <iframe
-            src={chatUrlData.url}
-            className="flex-1 w-full bg-black"
-            allow="clipboard-write"
-            onLoad={() => {
-              const approve = () => proxyCall("POST", instance.id, "chat-approve", token).catch(() => {});
-              approve();
-              setTimeout(approve, 2000);
-              setTimeout(approve, 5000);
-              setTimeout(approve, 10000);
-            }}
-          />
-        </div>
-      ) : (
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
 
@@ -1815,6 +1806,11 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
                         : <Loader2 className="w-3.5 h-3.5 animate-spin text-red-400" />}
                     </span>
                   </div>
+                  {typeof credits === "number" && credits <= 0 && (
+                    <div className="mb-2 rounded-lg border border-amber-400/30 bg-amber-500/10 px-2.5 py-2 text-[11px] text-amber-200">
+                      Seu saldo acabou. Recarregue para religar a instância automaticamente.
+                    </div>
+                  )}
                   <button
                     onClick={() => setShowPurchase(true)}
                     className="w-full py-1.5 rounded-lg bg-red-500/20 border border-red-400/30 text-red-400 text-xs font-medium hover:bg-red-500/30 transition-all"
@@ -1954,8 +1950,6 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
           )}
         </div>
       </div>
-
-      )}
 
       {/* ── Restart confirm dialog ── */}
       {restartConfirm && (
