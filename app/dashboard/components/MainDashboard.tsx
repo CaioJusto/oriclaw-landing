@@ -180,31 +180,38 @@ function QRModal({
   const [qrGeneratedAt, setQrGeneratedAt] = useState<number | null>(null);
   const [qrExpired, setQrExpired] = useState(false);
   const [restarting, setRestarting] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const qrDashboardAttemptsRef = useRef(0);
   const healthCheckedRef = useRef(false);
+  const pollingEnabledRef = useRef(false);
 
   const stopPolling = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
+    pollingEnabledRef.current = false;
+    if (pollTimeoutRef.current) {
+      clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
     }
   }, []);
 
-  const fetchQR = useCallback(async () => {
+  const fetchQR = useCallback(async (): Promise<boolean> => {
+    if (!pollingEnabledRef.current) return false;
+
     qrDashboardAttemptsRef.current += 1;
 
     if (qrDashboardAttemptsRef.current > MAX_QR_ATTEMPTS_DASHBOARD) {
       stopPolling();
       setTimedOut(true);
-      return;
+      return false;
     }
 
     try {
       const data = await proxyCall("GET", instanceId, `qr?_=${Date.now()}`, token);
+      if (!pollingEnabledRef.current) return false;
+
       if (data.connected) {
         setConnected(true);
         stopPolling();
+        return false;
       } else if (data.qr) {
         setQr(data.qr);
         setQrAscii(null);
@@ -228,20 +235,34 @@ function QRModal({
         }
       }
     } catch {
+      if (!pollingEnabledRef.current) return false;
       setError("Falha ao conectar com o assistente");
     }
+
+    return pollingEnabledRef.current;
   }, [instanceId, token, stopPolling, qr, qrAscii]);
 
   const startPolling = useCallback(() => {
+    stopPolling();
+    pollingEnabledRef.current = true;
     qrDashboardAttemptsRef.current = 0;
     setTimedOut(false);
     setError(null);
-    fetchQR();
-    intervalRef.current = setInterval(fetchQR, 3000);
-  }, [fetchQR]);
+
+    const poll = async () => {
+      const shouldContinue = await fetchQR();
+      if (!shouldContinue) return;
+      pollTimeoutRef.current = setTimeout(() => {
+        void poll();
+      }, 3000);
+    };
+
+    void poll();
+  }, [fetchQR, stopPolling]);
 
   const retryPolling = useCallback(async () => {
     // On retry, restart OpenClaw first to ensure it's running
+    stopPolling();
     setRestarting(true);
     setError(null);
     try {
@@ -249,8 +270,8 @@ function QRModal({
     } catch { /* ignore — will check via polling */ }
     setRestarting(false);
     // Wait a few seconds for OpenClaw to start generating QR
-    setTimeout(() => startPolling(), 3000);
-  }, [instanceId, token, startPolling]);
+    pollTimeoutRef.current = setTimeout(() => startPolling(), 3000);
+  }, [instanceId, token, startPolling, stopPolling]);
 
   // On mount: check health, restart if needed, then start QR polling
   useEffect(() => {
@@ -268,11 +289,11 @@ function QRModal({
           } catch { /* ignore */ }
           setRestarting(false);
           // Wait for OpenClaw to start generating QR
-          setTimeout(() => startPolling(), 4000);
+          pollTimeoutRef.current = setTimeout(() => startPolling(), 4000);
           return;
         }
       } catch { /* health check failed — try polling anyway */ }
-      startPolling();
+      void startPolling();
     })();
 
     return () => stopPolling();
@@ -1555,6 +1576,12 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
   }, [clearPollingTimer, runHealthPollingCycle]);
 
   useEffect(() => {
+    if (showQR) {
+      pollingStoppedRef.current = true;
+      clearPollingTimer();
+      return;
+    }
+
     fetchChatUrl();
     restartHealthPolling();
 
@@ -1562,7 +1589,7 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
       pollingStoppedRef.current = true;
       clearPollingTimer();
     };
-  }, [fetchChatUrl, restartHealthPolling, clearPollingTimer]);
+  }, [showQR, fetchChatUrl, restartHealthPolling, clearPollingTimer]);
 
   useEffect(() => {
     if (!isCreditsMode) return;

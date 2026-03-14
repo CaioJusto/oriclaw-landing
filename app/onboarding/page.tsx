@@ -456,7 +456,8 @@ export default function OnboardingPage() {
   const [discordGuildId, setDiscordGuildId] = useState('');
   const [discordConfigured, setDiscordConfigured] = useState(false);
 
-  const qrIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const qrPollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const qrPollingEnabledRef = useRef(false);
 
   const syncOpenAIStatus = useCallback(async (instanceId: string, accessToken: string) => {
     try {
@@ -560,48 +561,72 @@ export default function OnboardingPage() {
   const MAX_QR_ATTEMPTS = 60; // 60 × 3s = 3 minutes
   const MAX_CONSEC_ERRORS = 10;
 
+  const stopQRPolling = useCallback(() => {
+    qrPollingEnabledRef.current = false;
+    if (qrPollTimeoutRef.current) {
+      clearTimeout(qrPollTimeoutRef.current);
+      qrPollTimeoutRef.current = null;
+    }
+  }, []);
+
   const startQRPolling = useCallback(() => {
     if (!instance?.id || !token) return;
+    stopQRPolling();
+    qrPollingEnabledRef.current = true;
     qrAttemptRef.current = 0;
     qrConsecErrorsRef.current = 0;
     setQrTimeout(false);
     setQrConnectionError(false);
 
     const poll = async () => {
+      if (!qrPollingEnabledRef.current) return;
+
       qrAttemptRef.current += 1;
 
       // Timeout after max attempts
       if (qrAttemptRef.current > MAX_QR_ATTEMPTS) {
-        if (qrIntervalRef.current) clearInterval(qrIntervalRef.current);
+        stopQRPolling();
         setQrTimeout(true);
         return;
       }
 
       try {
         const data = await proxyCall("GET", instance.id, "qr", undefined, token);
+        if (!qrPollingEnabledRef.current) return;
         qrConsecErrorsRef.current = 0; // reset on success
         if (data.connected) {
           setQrConnected(true);
-          if (qrIntervalRef.current) clearInterval(qrIntervalRef.current);
+          stopQRPolling();
           setTimeout(() => setStep(4), 1500);
         } else if (data.qr) {
           setQrData(data.qr);
         }
       } catch {
+        if (!qrPollingEnabledRef.current) return;
         qrConsecErrorsRef.current += 1;
         if (qrConsecErrorsRef.current >= MAX_CONSEC_ERRORS) {
           setQrConnectionError(true);
         }
       }
+
+      if (!qrPollingEnabledRef.current) return;
+      qrPollTimeoutRef.current = setTimeout(() => {
+        void poll();
+      }, 3000);
     };
-    poll();
-    qrIntervalRef.current = setInterval(poll, 3000);
-  }, [instance?.id, token]);
+
+    void poll();
+  }, [instance?.id, token, stopQRPolling]);
 
   useEffect(() => {
-    if (step === 3) startQRPolling();
-    return () => { if (qrIntervalRef.current) clearInterval(qrIntervalRef.current); };
-  }, [step, startQRPolling]);
+    if (step === 3) {
+      startQRPolling();
+      return stopQRPolling;
+    }
+
+    stopQRPolling();
+    return stopQRPolling;
+  }, [step, startQRPolling, stopQRPolling]);
 
   // ── Step handlers ──────────────────────────────────────────────────────────
   const handleConfigure = async () => {
