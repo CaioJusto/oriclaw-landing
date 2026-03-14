@@ -99,6 +99,7 @@ async function proxyCall(
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
+    cache: "no-store",
     body: body ? JSON.stringify(body) : undefined,
   });
 
@@ -200,7 +201,7 @@ function QRModal({
     }
 
     try {
-      const data = await proxyCall("GET", instanceId, "qr", token);
+      const data = await proxyCall("GET", instanceId, `qr?_=${Date.now()}`, token);
       if (data.connected) {
         setConnected(true);
         stopPolling();
@@ -367,7 +368,8 @@ function QRModal({
           ) : (
             <div className="w-56 h-56 rounded-2xl bg-slate-800 border border-slate-700 flex flex-col items-center justify-center gap-3">
               <Loader2 className="w-10 h-10 text-red-400 animate-spin" />
-              <p className="text-slate-400 text-sm">Aguardando leitura...</p>
+              <p className="text-slate-400 text-sm text-center">Aguardando QR code...</p>
+              <p className="text-slate-500 text-xs text-center">O assistente está iniciando a conexão</p>
             </div>
           )}
         </div>

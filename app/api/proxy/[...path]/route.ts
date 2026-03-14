@@ -11,6 +11,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
+const NO_STORE_HEADERS = { 'Cache-Control': 'no-store, max-age=0' };
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 // UUID pattern for instance IDs — the backend validates ownership
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -30,19 +34,28 @@ async function handler(
   const supabase = createSupabaseServerClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
-    return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
+    return NextResponse.json({ error: 'Não autorizado.' }, {
+      status: 401,
+      headers: NO_STORE_HEADERS,
+    });
   }
 
   const pathSegments = params.path as string[];
 
   // Bloquear path traversal
   if (pathSegments.some(segment => segment === '..' || segment === '.' || segment.includes('/'))) {
-    return NextResponse.json({ error: 'Path inválido.' }, { status: 400 });
+    return NextResponse.json({ error: 'Path inválido.' }, {
+      status: 400,
+      headers: NO_STORE_HEADERS,
+    });
   }
 
   // ── Whitelist validation ─────────────────────────────────────────────────
   if (pathSegments.length === 0 || !isPathAllowed(pathSegments[0])) {
-    return NextResponse.json({ error: 'Path não permitido.' }, { status: 403 });
+    return NextResponse.json({ error: 'Path não permitido.' }, {
+      status: 403,
+      headers: NO_STORE_HEADERS,
+    });
   }
 
   const pathStr = pathSegments.join('/');
@@ -60,6 +73,7 @@ async function handler(
   const init: RequestInit = {
     method: req.method,
     headers,
+    cache: 'no-store',
   };
 
   if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -74,23 +88,35 @@ async function handler(
     const contentType = upstream.headers.get('content-type') ?? '';
     if (contentType.includes('application/json')) {
       const data = await upstream.json();
-      return NextResponse.json(data, { status: upstream.status });
+      return NextResponse.json(data, {
+        status: upstream.status,
+        headers: NO_STORE_HEADERS,
+      });
     }
 
     // Non-JSON: try to parse as JSON, fall back to text
     const text = await upstream.text();
     try {
       const data = JSON.parse(text);
-      return NextResponse.json(data, { status: upstream.status });
+      return NextResponse.json(data, {
+        status: upstream.status,
+        headers: NO_STORE_HEADERS,
+      });
     } catch {
       return new NextResponse(text, {
         status: upstream.status,
-        headers: { 'Content-Type': contentType || 'text/plain' },
+        headers: {
+          'Content-Type': contentType || 'text/plain',
+          ...NO_STORE_HEADERS,
+        },
       });
     }
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Proxy error';
-    return NextResponse.json({ error: msg }, { status: 502 });
+    return NextResponse.json({ error: msg }, {
+      status: 502,
+      headers: NO_STORE_HEADERS,
+    });
   }
 }
 
