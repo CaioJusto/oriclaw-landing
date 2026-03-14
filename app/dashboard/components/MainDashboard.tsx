@@ -182,6 +182,7 @@ function QRModal({
   const [restarting, setRestarting] = useState(false);
   const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const qrDashboardAttemptsRef = useRef(0);
+  const qrFailureCountRef = useRef(0);
   const healthCheckedRef = useRef(false);
   const pollingEnabledRef = useRef(false);
 
@@ -207,6 +208,7 @@ function QRModal({
     try {
       const data = await proxyCall("GET", instanceId, `qr?_=${Date.now()}`, token);
       if (!pollingEnabledRef.current) return false;
+      qrFailureCountRef.current = 0;
 
       if (data.connected) {
         setConnected(true);
@@ -236,7 +238,10 @@ function QRModal({
       }
     } catch {
       if (!pollingEnabledRef.current) return false;
-      setError("Falha ao conectar com o assistente");
+      qrFailureCountRef.current += 1;
+      if (qrFailureCountRef.current >= 3 && !qr && !qrAscii) {
+        setError("Falha ao conectar com o assistente");
+      }
     }
 
     return pollingEnabledRef.current;
@@ -246,6 +251,7 @@ function QRModal({
     stopPolling();
     pollingEnabledRef.current = true;
     qrDashboardAttemptsRef.current = 0;
+    qrFailureCountRef.current = 0;
     setTimedOut(false);
     setError(null);
 
@@ -1451,6 +1457,7 @@ function ChannelCard({
 export default function MainDashboard({ instance, userEmail, token, onLogout, onBillingPortal, billingLoading, logoutLoading }: Props) {
   const [health, setHealth] = useState<HealthData | null>(null);
   const [healthLoading, setHealthLoading] = useState(true);
+  const [healthResolvedOnce, setHealthResolvedOnce] = useState(false);
   const [detailedHealth, setDetailedHealth] = useState<DetailedHealthData | null>(null);
   const [chatUrlData, setChatUrlData] = useState<ChatUrlData | null>(null);
   const [channels, setChannels] = useState<ChannelsData | null>(null);
@@ -1485,13 +1492,12 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
     try {
       const data = await proxyCall("GET", instance.id, "health", token);
       if (data?.error) {
-        setHealth(null);
         return false;
       }
       setHealth(data);
+      setHealthResolvedOnce(true);
       return true;
     } catch {
-      setHealth(null);
       return false;
     }
     finally { setHealthLoading(false); }
@@ -1651,6 +1657,19 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
   };
 
   const isOnline = health?.openclaw === "running";
+  const showHealthPending = !healthResolvedOnce && !pollingPaused;
+  const statusTone = showHealthPending
+    ? "text-slate-400"
+    : isOnline
+      ? "text-green-400"
+      : "text-slate-400";
+  const statusLabel = showHealthPending
+    ? "Conectando ao assistente..."
+    : isOnline
+      ? `Assistente online${health?.uptime ? ` · Uptime: ${formatUptime(health.uptime)}` : ""}`
+      : healthResolvedOnce
+        ? "Assistente offline"
+        : "Assistente indisponível";
 
   const openChatWindow = useCallback(() => {
     if (!chatUrlData?.url) return;
@@ -1784,15 +1803,13 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
           <div>
             <h1 className="text-2xl font-bold text-white">Painel</h1>
             <div className="flex items-center gap-2 mt-1">
-              {healthLoading ? (
+              {showHealthPending || healthLoading ? (
                 <Loader2 className="w-3.5 h-3.5 text-red-400 animate-spin" />
               ) : (
                 <div className={`w-2 h-2 rounded-full ${isOnline ? "bg-green-400 shadow-sm shadow-green-400" : "bg-red-400"}`} />
               )}
-              <span className={`text-sm ${isOnline ? "text-green-400" : "text-slate-400"}`}>
-                {healthLoading ? "Verificando..." : isOnline
-                  ? `Assistente online${health?.uptime ? ` · Uptime: ${formatUptime(health.uptime)}` : ""}`
-                  : "Assistente offline"}
+              <span className={`text-sm ${statusTone}`}>
+                {statusLabel}
               </span>
             </div>
           </div>
