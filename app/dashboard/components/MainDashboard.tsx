@@ -1655,22 +1655,74 @@ export default function MainDashboard({ instance, userEmail, token, onLogout, on
   const openChatWindow = useCallback(() => {
     if (!chatUrlData?.url) return;
 
-    let attempts = 0;
-    const maxAttempts = 30;
-    const approve = () => {
-      attempts += 1;
-      void proxyCall("POST", instance.id, "chat-approve", token).catch(() => {});
-      if (attempts >= maxAttempts) window.clearInterval(interval);
-    };
-    approve();
-    const interval = window.setInterval(approve, 2_000);
-    window.setTimeout(() => window.clearInterval(interval), 60_000);
+    const popup = window.open("", "_blank");
+    if (!popup) {
+      const link = document.createElement("a");
+      link.href = chatUrlData.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.click();
+    } else {
+      popup.location.href = chatUrlData.url;
+    }
 
-    const link = document.createElement("a");
-    link.href = chatUrlData.url;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.click();
+    let attempts = 0;
+    let stopped = false;
+    let nextPoll: number | null = null;
+    const maxAttempts = 30;
+
+    const stopPolling = () => {
+      stopped = true;
+      if (nextPoll !== null) {
+        window.clearTimeout(nextPoll);
+        nextPoll = null;
+      }
+    };
+
+    const refreshPopup = () => {
+      if (!popup || popup.closed) return;
+
+      try {
+        popup.location.reload();
+        return;
+      } catch {
+        // Cross-origin popups can reject direct reload access while still allowing navigation.
+      }
+
+      try {
+        popup.location.href = chatUrlData.url;
+      } catch {
+        window.open(chatUrlData.url, "_blank");
+      }
+    };
+
+    const approve = async () => {
+      if (stopped) return;
+      attempts += 1;
+
+      try {
+        const result = await proxyCall("POST", instance.id, "chat-approve", token);
+        if (typeof result?.approved === "number" && result.approved > 0) {
+          stopPolling();
+          window.setTimeout(refreshPopup, 250);
+          window.setTimeout(refreshPopup, 1_500);
+          return;
+        }
+      } catch {
+        // Keep retrying while the gateway finishes registering the pair request.
+      }
+
+      if (!stopped && attempts < maxAttempts) {
+        nextPoll = window.setTimeout(() => {
+          void approve();
+        }, 1_000);
+      }
+    };
+
+    nextPoll = window.setTimeout(() => {
+      void approve();
+    }, 400);
+    window.setTimeout(stopPolling, 60_000);
   }, [chatUrlData?.url, instance.id, token]);
 
   return (
