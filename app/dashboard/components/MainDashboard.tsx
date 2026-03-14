@@ -218,11 +218,17 @@ function QRModal({
         setQrExpired(false);
         setError(null);
       } else if (data.error) {
-        // Don't show "QR not available yet" as a final error — keep polling
-        if (!qr && !qrAscii) setError(data.error);
+        const pendingQr =
+          data.error === "QR not available yet" ||
+          data.login_started === true;
+        if (pendingQr) {
+          setError(null);
+        } else if (!qr && !qrAscii) {
+          setError(data.error);
+        }
       }
     } catch {
-      setError("Erro ao buscar QR code");
+      setError("Falha ao conectar com o assistente");
     }
   }, [instanceId, token, stopPolling, qr, qrAscii]);
 
@@ -360,10 +366,12 @@ function QRModal({
               )}
             </div>
           ) : error ? (
-            <div className="w-56 h-56 rounded-2xl bg-slate-800 border border-slate-700 flex flex-col items-center justify-center gap-2 px-4">
-              <Loader2 className="w-10 h-10 text-red-400 animate-spin" />
-              <p className="text-slate-400 text-sm text-center">Aguardando QR code...</p>
-              <p className="text-slate-500 text-xs text-center">O assistente está iniciando</p>
+            <div className="w-56 rounded-2xl bg-red-500/10 border border-red-500/30 flex flex-col items-center justify-center gap-2 px-4 py-6">
+              <AlertCircle className="w-10 h-10 text-red-400" />
+              <p className="text-red-300 text-sm text-center">{error}</p>
+              <button onClick={retryPolling} className="mt-2 px-4 py-2 rounded-xl bg-red-500 hover:bg-red-400 text-white text-xs font-medium transition-all">
+                Reiniciar e tentar novamente
+              </button>
             </div>
           ) : (
             <div className="w-56 h-56 rounded-2xl bg-slate-800 border border-slate-700 flex flex-col items-center justify-center gap-3">
